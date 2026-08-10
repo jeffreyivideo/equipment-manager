@@ -114,6 +114,22 @@
     <script>
         // 替換成您自己的 API 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbw_g-5UqUCtOVz5SLHO5C9kTFsZdItv891JoX_E2QGJ7K6-yoAFr2S5LExjp2m9b26N/exec";
+        // 🌟 新增：化學品容量自動換算器 (辨識 gal, L, ml)
+        function convertToLiters(qty, unitStr) {
+            let str = String(unitStr).toLowerCase();
+            let volume = 1; 
+            // 抓取字串中的數字 (例如 "5gal/桶" 會抓出 5)
+            let match = str.match(/([0-9.]+)/);
+            
+            if (match) {
+                let val = parseFloat(match[1]);
+                if (str.includes('gal') || str.includes('加侖')) volume = val * 3.78541;
+                else if (str.includes('ml') || str.includes('毫升')) volume = val / 1000;
+                else if (str.includes('l') || str.includes('公升')) volume = val;
+                else volume = val; // 如果只有數字沒寫單位，預設直接相乘
+            }
+            return qty * volume;
+        }
 
         let globalItemsData = [];
         let globalFilteredInvData = []; // 專門給庫存總覽用的
@@ -278,7 +294,7 @@
             });
         }
 
-        // 🌟 升級版：進貨紀錄 (依航廈拆分區塊，日期最新優先)
+        // 🌟 升級版：進貨紀錄 (內建化學品 L/月 申報數據自動精算)
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -291,7 +307,7 @@
                 itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim();
             });
 
-            // 1. 資料過濾
+            // 1. 過濾進貨資料
             let filteredData = globalInboundData.filter(record => {
                 let recId = String(record.itemId || "").trim();
                 let recordCat = itemCategoryMap[recId] || '其他';
@@ -329,27 +345,83 @@
                 groupedData[recId].history.push(record);
             });
 
-            // 3. 產出 HTML
             let html = '';
             for (const [recId, group] of Object.entries(groupedData)) {
                 
-                // 拆分一二航
+                // === 法規申報數據計算核心 (僅針對清潔化學品) ===
+                let analyzeHtml = '';
+                if (group.catName.includes('清潔')) {
+                    let itemInfo = globalItemsData.find(i => i.id === recId);
+                    let unitStr = itemInfo ? itemInfo.unit : "";
+
+                    // 計算「貯存」(進貨) 的每月統計
+                    let monthlyInbound = {};
+                    group.history.forEach(r => {
+                        let date = new Date(String(r.date).replace(/-/g, '/'));
+                        let mk = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2, '0');
+                        if(!monthlyInbound[mk]) monthlyInbound[mk] = 0;
+                        monthlyInbound[mk] += (Number(r.quantity) || 0);
+                    });
+                    let inVals = Object.values(monthlyInbound);
+                    let storeMaxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
+                    let storeAvgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
+                    
+                    let storeMaxL = convertToLiters(storeMaxQty, unitStr).toFixed(1);
+                    let storeAvgL = convertToLiters(storeAvgQty, unitStr).toFixed(1);
+
+                    // 計算「使用」(發放) 的每月統計
+                    let monthlyOutbound = {};
+                    let relatedOutbound = globalOutboundData.filter(r => String(r.itemId).trim() === recId);
+                    relatedOutbound.forEach(r => {
+                        let date = new Date(String(r.date).replace(/-/g, '/'));
+                        let mk = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2, '0');
+                        if(!monthlyOutbound[mk]) monthlyOutbound[mk] = 0;
+                        monthlyOutbound[mk] += (Number(r.quantity) || 0);
+                    });
+                    let outVals = Object.values(monthlyOutbound);
+                    let useMaxQty = outVals.length > 0 ? Math.max(...outVals) : 0;
+                    let useAvgQty = outVals.length > 0 ? (outVals.reduce((a,b)=>a+b,0) / outVals.length) : 0;
+                    
+                    let useMaxL = convertToLiters(useMaxQty, unitStr).toFixed(1);
+                    let useAvgL = convertToLiters(useAvgQty, unitStr).toFixed(1);
+
+                    // 產出專屬的紫色數據看板
+                    analyzeHtml = `
+                    <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100">
+                        <div class="text-[11px] font-bold text-indigo-800 mb-2"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: L/月)</div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-white rounded p-1.5 text-center shadow-sm">
+                                <div class="text-[10px] text-gray-500 font-bold mb-1">使用 (依發放)</div>
+                                <div class="flex justify-around">
+                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-indigo-600">${useAvgL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${useMaxL}</div></div>
+                                </div>
+                            </div>
+                            <div class="bg-white rounded p-1.5 text-center shadow-sm">
+                                <div class="text-[10px] text-gray-500 font-bold mb-1">貯存 (依進貨)</div>
+                                <div class="flex justify-around">
+                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-teal-600">${storeAvgL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${storeMaxL}</div></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[9px] text-indigo-400 mt-1 text-right">依據規格「${unitStr}」自動換算</div>
+                    </div>`;
+                }
+                
+                // 拆分一二航明細 (維持原本邏輯)
                 let t1Records = []; let t2Records = [];
                 group.history.forEach(r => {
                     let orderStr = String(r.orderId || "");
                     if(orderStr.includes('T1') || orderStr.includes('一航')) { t1Records.push(r); } 
                     else if(orderStr.includes('T2') || orderStr.includes('二航')) { t2Records.push(r); } 
-                    else { t1Records.push(r); } // 防呆
+                    else { t1Records.push(r); }
                 });
 
-                // 強制日期排序 (最新到最舊)
                 const sortDesc = (a, b) => new Date(String(b.date).replace(/-/g, '/')) - new Date(String(a.date).replace(/-/g, '/'));
-                t1Records.sort(sortDesc);
-                t2Records.sort(sortDesc);
+                t1Records.sort(sortDesc); t2Records.sort(sortDesc);
 
                 let historyHtml = '';
-                
-                // 繪製一航明細區塊
                 if(t1Records.length > 0) {
                     let subQty = t1Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
                     historyHtml += `
@@ -360,16 +432,11 @@
                         <div class="p-2 space-y-1">`;
                     t1Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `
-                            <div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0">
-                                <div class="text-gray-600">${cleanDate}</div>
-                                <div class="text-blue-600 font-medium">+${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div>
-                            </div>`;
+                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">+${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
                     });
                     historyHtml += `</div></div>`;
                 }
 
-                // 繪製二航明細區塊
                 if(t2Records.length > 0) {
                     let subQty = t2Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
                     historyHtml += `
@@ -380,11 +447,7 @@
                         <div class="p-2 space-y-1">`;
                     t2Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `
-                            <div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0">
-                                <div class="text-gray-600">${cleanDate}</div>
-                                <div class="text-blue-600 font-medium">+${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div>
-                            </div>`;
+                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">+${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
                     });
                     historyHtml += `</div></div>`;
                 }
@@ -398,6 +461,7 @@
                         </div>
                         <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">總計: +${group.totalQty}</div>
                     </div>
+                    ${analyzeHtml}
                     ${historyHtml}
                 </div>`;
             }
