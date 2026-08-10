@@ -114,25 +114,9 @@
     <script>
         // 替換成您自己的 API 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbw_g-5UqUCtOVz5SLHO5C9kTFsZdItv891JoX_E2QGJ7K6-yoAFr2S5LExjp2m9b26N/exec";
-        // 🌟 新增：化學品容量自動換算器 (辨識 gal, L, ml)
-        function convertToLiters(qty, unitStr) {
-            let str = String(unitStr).toLowerCase();
-            let volume = 1; 
-            // 抓取字串中的數字 (例如 "5gal/桶" 會抓出 5)
-            let match = str.match(/([0-9.]+)/);
-            
-            if (match) {
-                let val = parseFloat(match[1]);
-                if (str.includes('gal') || str.includes('加侖')) volume = val * 3.78541;
-                else if (str.includes('ml') || str.includes('毫升')) volume = val / 1000;
-                else if (str.includes('l') || str.includes('公升')) volume = val;
-                else volume = val; // 如果只有數字沒寫單位，預設直接相乘
-            }
-            return qty * volume;
-        }
 
         let globalItemsData = [];
-        let globalFilteredInvData = []; // 專門給庫存總覽用的
+        let globalFilteredInvData = []; 
         let globalInboundData = [];
         let globalOutboundData = [];
 
@@ -171,7 +155,6 @@
                     globalInboundData = result.data.inbound;
                     globalOutboundData = result.data.outbound;
                     
-                    // 庫存總覽只保留防護具與設備
                     globalFilteredInvData = globalItemsData.filter(item => {
                         let cat = String(item.category || "").trim();
                         return cat.includes('防護') || cat.includes('設備');
@@ -180,10 +163,8 @@
                     renderDashboard(globalFilteredInvData);
                     renderItems();
                     
-                    // 初始化進貨紀錄的連動選單並渲染
                     updateInboundItemOptions();
                     renderInbound();
-                    
                     renderOutbound();
                 } else {
                     alert("資料讀取失敗，請檢查系統設定。");
@@ -193,7 +174,6 @@
             }
         }
 
-        // --- 輔助計算函數：從進出貨明細算出各航廈真實庫存 ---
         function calculateTerminalStock(itemId, termCode, termKw) {
             let inQty = 0; let outQty = 0;
             globalInboundData.forEach(r => {
@@ -222,7 +202,6 @@
             document.getElementById('stat-danger').innerText = danger;
         }
 
-        // 🌟 升級版：庫存列表 (加入搜尋過濾與航廈明細)
         function renderItems() {
             const container = document.getElementById('inventory-list');
             if(!container) return;
@@ -231,7 +210,6 @@
             const searchTerm = (document.getElementById('search-inventory').value || "").trim().toLowerCase();
 
             globalFilteredInvData.forEach(item => {
-                // 搜尋過濾邏輯
                 if(searchTerm && !item.name.toLowerCase().includes(searchTerm) && !item.id.toLowerCase().includes(searchTerm)) {
                     return; 
                 }
@@ -241,7 +219,6 @@
                 if (current <= 0) { statusColor = "red"; statusIcon = "fa-xmark"; statusText = "庫存為零"; } 
                 else if (current <= safe) { statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於水位"; }
 
-                // 動態計算各航廈庫存
                 let t1Stock = calculateTerminalStock(item.id, 'T1', '一');
                 let t2Stock = calculateTerminalStock(item.id, 'T2', '二');
 
@@ -251,7 +228,6 @@
                     <h2 class="text-base font-bold text-gray-800 mb-2">${item.name} <span class="text-sm font-normal text-gray-500">(${item.unit})</span></h2>
                     <div class="text-sm text-gray-600 mb-3"><i class="fa-solid fa-id-card text-purple-500 w-5"></i> 編號：${item.id}</div>
                     
-                    <!-- 航廈庫存拆分看板 -->
                     <div class="flex space-x-2 mb-3">
                         <div class="flex-1 bg-indigo-50 rounded p-2 text-center border border-indigo-100">
                             <div class="text-[10px] text-indigo-800 font-bold mb-1">第一航廈</div>
@@ -266,19 +242,16 @@
                             <div class="text-sm font-bold text-gray-600">${current}</div>
                         </div>
                     </div>
-
                     <div class="text-sm text-gray-600"><span class="font-medium text-${statusColor}-600">狀態：<i class="fa-solid ${statusIcon}"></i> ${statusText} (安全值: ${safe})</span></div>
                 </div>`;
                 container.insertAdjacentHTML('beforeend', cardHTML);
             });
         }
 
-        // 🌟 新增：進貨選單連動邏輯 (當類別改變時，品名跟著變)
         function updateInboundItemOptions() {
             const catFilter = document.getElementById('filter-inbound-category').value;
             const itemSelect = document.getElementById('filter-inbound-item');
             
-            // 清空並加入預設選項
             itemSelect.innerHTML = '<option value="ALL">所有品名 (請先選擇類別)</option>';
             
             let itemsToShow = globalItemsData;
@@ -288,13 +261,32 @@
 
             itemsToShow.forEach(item => {
                 let opt = document.createElement('option');
-                opt.value = item.id; // 背後用 ID 傳遞更精準
+                opt.value = item.id; 
                 opt.textContent = item.name;
                 itemSelect.appendChild(opt);
             });
         }
 
-        // 🌟 升級版：進貨紀錄 (日期最新優先 + 使用量依進貨估算)
+        // 🌟 新增：化學品單位智慧辨識器 (支援公升 L 與公斤 KG)
+        function parseUnitMultiplier(unitStr) {
+            let str = String(unitStr).toLowerCase();
+            let multiplier = 1;
+            let displayUnit = "L/月"; // 預設單位為 L
+
+            let match = str.match(/([0-9.]+)/);
+            if (match) {
+                let val = parseFloat(match[1]);
+                if (str.includes('gal') || str.includes('加侖')) { multiplier = val * 3.78541; displayUnit = "L/月"; }
+                else if (str.includes('ml') || str.includes('毫升')) { multiplier = val / 1000; displayUnit = "L/月"; }
+                else if (str.includes('kg') || str.includes('公斤')) { multiplier = val; displayUnit = "KG/月"; }
+                else if (str.includes('g') || str.includes('公克') && !str.includes('gal')) { multiplier = val / 1000; displayUnit = "KG/月"; }
+                else if (str.includes('l') || str.includes('公升')) { multiplier = val; displayUnit = "L/月"; }
+                else { multiplier = val; displayUnit = "單位/月"; }
+            }
+            return { multiplier, unit: displayUnit };
+        }
+
+        // 🌟 升級版：進貨紀錄 (無符號、等比例計算、支援KG)
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -307,7 +299,6 @@
                 itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim();
             });
 
-            // 1. 過濾進貨資料
             let filteredData = globalInboundData.filter(record => {
                 let recId = String(record.itemId || "").trim();
                 let recordCat = itemCategoryMap[recId] || '其他';
@@ -331,7 +322,6 @@
                 return;
             }
 
-            // 2. 群組化資料
             let groupedData = {};
             filteredData.forEach(record => {
                 let recId = String(record.itemId || "").trim();
@@ -348,16 +338,13 @@
             let html = '';
             for (const [recId, group] of Object.entries(groupedData)) {
                 
-                // === 法規申報數據計算核心 (僅針對清潔化學品) ===
                 let analyzeHtml = '';
                 if (group.catName.includes('清潔')) {
                     let itemInfo = globalItemsData.find(i => i.id === recId);
                     let unitStr = itemInfo ? itemInfo.unit : "";
 
-                    // 🌟 改變邏輯：不論「使用」或「貯存」，皆以「進貨紀錄」來精算每月數量
                     let monthlyInbound = {};
                     group.history.forEach(r => {
-                        // 確保格式統一並抓取 年-月
                         let dStr = String(r.date || "").replace(/\//g, '-');
                         let parts = dStr.split('-');
                         if(parts.length >= 2) {
@@ -368,30 +355,43 @@
                     });
                     
                     let inVals = Object.values(monthlyInbound);
-                    let maxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
-                    let avgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
+                    let rawMaxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
+                    let rawAvgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
                     
-                    // 換算成公升 (L)
-                    let finalMaxL = convertToLiters(maxQty, unitStr).toFixed(1);
-                    let finalAvgL = convertToLiters(avgQty, unitStr).toFixed(1);
+                    // 取得倍率與單位 (L 或 KG)
+                    let unitData = parseUnitMultiplier(unitStr);
+                    
+                    // 依據法規邏輯精算
+                    let useAvgVal = rawAvgQty * unitData.multiplier;
+                    let useMaxVal = rawMaxQty * unitData.multiplier;
+                    
+                    let storeAvgVal = useMaxVal; // 使用最大量 = 貯存平均數量
+                    let storeMaxVal = storeAvgVal; 
+                    if (useAvgVal > 0) {
+                        storeMaxVal = storeAvgVal * (useMaxVal / useAvgVal); // 等比例計算
+                    }
 
-                    // 產出專屬的紫色數據看板 (顯示相同的進貨推估數據)
+                    let finalUseAvg = useAvgVal.toFixed(1);
+                    let finalUseMax = useMaxVal.toFixed(1);
+                    let finalStoreAvg = storeAvgVal.toFixed(1);
+                    let finalStoreMax = storeMaxVal.toFixed(1);
+
                     analyzeHtml = `
                     <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100">
-                        <div class="text-[11px] font-bold text-indigo-800 mb-2"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: L/月)</div>
+                        <div class="text-[11px] font-bold text-indigo-800 mb-2"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: ${unitData.unit})</div>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="bg-white rounded p-1.5 text-center shadow-sm">
-                                <div class="text-[10px] text-gray-500 font-bold mb-1">使用 <span class="text-gray-400">(依進貨推估)</span></div>
+                                <div class="text-[10px] text-gray-600 font-bold mb-1">使用</div>
                                 <div class="flex justify-around">
-                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-indigo-600">${finalAvgL}</div></div>
-                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalMaxL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-indigo-600">${finalUseAvg}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalUseMax}</div></div>
                                 </div>
                             </div>
                             <div class="bg-white rounded p-1.5 text-center shadow-sm">
-                                <div class="text-[10px] text-gray-500 font-bold mb-1">貯存 <span class="text-gray-400">(依進貨計算)</span></div>
+                                <div class="text-[10px] text-gray-600 font-bold mb-1">貯存</div>
                                 <div class="flex justify-around">
-                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-teal-600">${finalAvgL}</div></div>
-                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalMaxL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-teal-600">${finalStoreAvg}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalStoreMax}</div></div>
                                 </div>
                             </div>
                         </div>
@@ -399,7 +399,6 @@
                     </div>`;
                 }
                 
-                // 拆分一二航明細
                 let t1Records = []; let t2Records = [];
                 group.history.forEach(r => {
                     let orderStr = String(r.orderId || "");
@@ -408,7 +407,6 @@
                     else { t1Records.push(r); }
                 });
 
-                // 🌟 強制字串降冪排序：確保最新日期 (如 2026) 永遠排在最上面
                 const sortDesc = (a, b) => {
                     let dA = String(a.date || "").replace(/\//g, '-');
                     let dB = String(b.date || "").replace(/\//g, '-');
@@ -423,12 +421,12 @@
                     historyHtml += `
                     <div class="mt-3 rounded border border-indigo-100 overflow-hidden">
                         <div class="bg-indigo-50 px-2 py-1 flex justify-between items-center border-b border-indigo-100 text-[11px] font-bold text-indigo-800">
-                            <span>一航進貨明細</span><span>小計: +${subQty}</span>
+                            <span>一航進貨明細</span><span>小計: ${subQty}</span>
                         </div>
                         <div class="p-2 space-y-1">`;
                     t1Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">+${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
+                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
                     });
                     historyHtml += `</div></div>`;
                 }
@@ -438,12 +436,12 @@
                     historyHtml += `
                     <div class="mt-2 rounded border border-teal-100 overflow-hidden">
                         <div class="bg-teal-50 px-2 py-1 flex justify-between items-center border-b border-teal-100 text-[11px] font-bold text-teal-800">
-                            <span>二航進貨明細</span><span>小計: +${subQty}</span>
+                            <span>二航進貨明細</span><span>小計: ${subQty}</span>
                         </div>
                         <div class="p-2 space-y-1">`;
                     t2Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">+${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
+                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
                     });
                     historyHtml += `</div></div>`;
                 }
@@ -455,7 +453,7 @@
                             <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span>
                             <div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div>
                         </div>
-                        <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">總計: +${group.totalQty}</div>
+                        <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">總計: ${group.totalQty}</div>
                     </div>
                     ${analyzeHtml}
                     ${historyHtml}
@@ -464,7 +462,7 @@
             container.innerHTML = html;
         }
 
-        // 🌟 升級版：發放紀錄 (依航廈拆分區塊，日期最新優先)
+        // 🌟 發放紀錄 (移除所有多餘符號)
         function renderOutbound() {
             const container = document.getElementById('outbound-list-container');
             if(!container) return;
@@ -502,8 +500,12 @@
                     else { t1Records.push(r); }
                 });
 
-                const sortDesc = (a, b) => new Date(String(b.date).replace(/-/g, '/')) - new Date(String(a.date).replace(/-/g, '/'));
-                t1Records.sort(sortDesc);
+                const sortDesc = (a, b) => {
+                    let dA = String(a.date || "").replace(/\//g, '-');
+                    let dB = String(b.date || "").replace(/\//g, '-');
+                    return dB.localeCompare(dA);
+                };
+                t1Records.sort(sortDesc); 
                 t2Records.sort(sortDesc);
 
                 let historyHtml = '';
@@ -513,16 +515,12 @@
                     historyHtml += `
                     <div class="mt-3 rounded border border-indigo-100 overflow-hidden">
                         <div class="bg-indigo-50 px-2 py-1 flex justify-between items-center border-b border-indigo-100 text-[11px] font-bold text-indigo-800">
-                            <span>一航發放明細</span><span>小計: -${subQty}</span>
+                            <span>一航發放明細</span><span>小計: ${subQty}</span>
                         </div>
                         <div class="p-2 space-y-1">`;
                     t1Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `
-                            <div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0">
-                                <div class="text-gray-600">${cleanDate}</div>
-                                <div class="text-orange-600 font-medium">-${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-12 text-right truncate">${r.recipient}</span></div>
-                            </div>`;
+                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-orange-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-12 text-right truncate">${r.recipient}</span></div></div>`;
                     });
                     historyHtml += `</div></div>`;
                 }
@@ -532,16 +530,12 @@
                     historyHtml += `
                     <div class="mt-2 rounded border border-teal-100 overflow-hidden">
                         <div class="bg-teal-50 px-2 py-1 flex justify-between items-center border-b border-teal-100 text-[11px] font-bold text-teal-800">
-                            <span>二航發放明細</span><span>小計: -${subQty}</span>
+                            <span>二航發放明細</span><span>小計: ${subQty}</span>
                         </div>
                         <div class="p-2 space-y-1">`;
                     t2Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `
-                            <div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0">
-                                <div class="text-gray-600">${cleanDate}</div>
-                                <div class="text-orange-600 font-medium">-${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-12 text-right truncate">${r.recipient}</span></div>
-                            </div>`;
+                        historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-orange-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-12 text-right truncate">${r.recipient}</span></div></div>`;
                     });
                     historyHtml += `</div></div>`;
                 }
@@ -553,7 +547,7 @@
                             <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span>
                             <div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div>
                         </div>
-                        <div class="text-xs font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-100">總計: -${group.totalQty}</div>
+                        <div class="text-xs font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-100">總計: ${group.totalQty}</div>
                     </div>
                     ${historyHtml}
                 </div>`;
