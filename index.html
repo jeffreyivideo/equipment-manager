@@ -1,15 +1,87 @@
-<!-- 在 </body> 標籤上方加入這段 Script -->
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>防護具與物料總後台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 font-sans text-gray-800 pb-10">
+
+    <!-- 頂部導覽列 -->
+    <header class="bg-[#0f3460] text-white p-3 flex items-center justify-center sticky top-0 z-50">
+        <div class="bg-white text-[#0f3460] text-xs font-bold px-2 py-1 rounded mr-2">系統</div>
+        <h1 class="text-lg font-bold tracking-wider">防護具與物料總後台</h1>
+    </header>
+
+    <!-- 頁籤 (Tabs) -->
+    <div class="flex bg-white border-b border-gray-200 sticky top-[52px] z-40">
+        <div class="flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold">
+            <i class="fa-solid fa-box-open mr-1"></i> 庫存總覽
+        </div>
+        <div class="flex-1 text-center py-3 text-gray-500 font-medium">
+            <i class="fa-solid fa-chart-simple mr-1"></i> 進貨紀錄
+        </div>
+        <div class="flex-1 text-center py-3 text-gray-500 font-medium">
+            <i class="fa-solid fa-clipboard-check mr-1"></i> 發放紀錄
+        </div>
+    </div>
+
+    <!-- 內容區域 -->
+    <main class="max-w-md mx-auto mt-4 px-3">
+        
+        <!-- 自動顯示當前日期 -->
+        <div class="bg-gray-200 text-center py-2 rounded-lg text-gray-700 font-medium mb-4 shadow-sm" id="current-date">
+            讀取日期中...
+        </div>
+
+        <!-- 數據儀表板 (已加入 ID 供 JS 綁定) -->
+        <div class="grid grid-cols-4 gap-2 mb-5">
+            <div class="bg-white border border-blue-200 rounded-lg p-2 text-center shadow-sm">
+                <div id="stat-total" class="text-xl font-bold text-blue-500">-</div>
+                <div class="text-[10px] text-gray-500 mt-1">全部品項</div>
+            </div>
+            <div class="bg-white border border-green-200 rounded-lg p-2 text-center shadow-sm">
+                <div id="stat-good" class="text-xl font-bold text-green-500">-</div>
+                <div class="text-[10px] text-gray-500 mt-1"><i class="fa-regular fa-circle-check"></i> 庫存充足</div>
+            </div>
+            <div class="bg-white border border-yellow-200 rounded-lg p-2 text-center shadow-sm">
+                <div id="stat-warning" class="text-xl font-bold text-yellow-500">-</div>
+                <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> 叫貨警戒</div>
+            </div>
+            <div class="bg-white border border-red-200 rounded-lg p-2 text-center shadow-sm">
+                <div id="stat-danger" class="text-xl font-bold text-red-500">-</div>
+                <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-xmark"></i> 庫存為零</div>
+            </div>
+        </div>
+
+        <!-- 動態生成的卡片列表容器 (已加入 ID) -->
+        <div id="inventory-list" class="space-y-3">
+            <!-- JavaScript 會把資料倒進這裡 -->
+        </div>
+
+    </main>
+
+    <!-- 前端抓取資料的 Script -->
     <script>
-        // 替換成您剛剛在 GAS 部署獲得的網頁應用程式網址
+        // 您最新的 API 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbw_g-5UqUCtOVz5SLHO5C9kTFsZdItv891JoX_E2QGJ7K6-yoAFr2S5LExjp2m9b26N/exec";
 
         document.addEventListener('DOMContentLoaded', () => {
+            // 自動更新畫面的日期為今日
+            const dateObj = new Date();
+            const year = dateObj.getFullYear();
+            const month = dateObj.getMonth() + 1;
+            const day = dateObj.getDate();
+            document.getElementById('current-date').innerText = `${year}年${month}月${day}日`;
+            
+            // 開始抓資料
             fetchInventoryData();
         });
 
         async function fetchInventoryData() {
             try {
-                // 顯示載入中狀態
                 const container = document.getElementById('inventory-list');
                 if(container) container.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p>資料讀取中，請稍候...</p></div>';
 
@@ -101,3 +173,5 @@
             });
         }
     </script>
+</body>
+</html>
