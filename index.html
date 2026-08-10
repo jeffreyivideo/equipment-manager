@@ -267,22 +267,41 @@
             });
         }
 
-        // 🌟 新增：化學品單位智慧辨識器 (支援公升 L 與公斤 KG)
+        // 🌟 新增：化學品單位智慧辨識器 (支援箱數換算、公升 L 與公斤 KG)
         function parseUnitMultiplier(unitStr) {
             let str = String(unitStr).toLowerCase();
-            let multiplier = 1;
+            let baseVol = 1;
             let displayUnit = "L/月"; // 預設單位為 L
 
-            let match = str.match(/([0-9.]+)/);
-            if (match) {
-                let val = parseFloat(match[1]);
-                if (str.includes('gal') || str.includes('加侖')) { multiplier = val * 3.78541; displayUnit = "L/月"; }
-                else if (str.includes('ml') || str.includes('毫升')) { multiplier = val / 1000; displayUnit = "L/月"; }
-                else if (str.includes('kg') || str.includes('公斤')) { multiplier = val; displayUnit = "KG/月"; }
-                else if (str.includes('g') || str.includes('公克') && !str.includes('gal')) { multiplier = val / 1000; displayUnit = "KG/月"; }
-                else if (str.includes('l') || str.includes('公升')) { multiplier = val; displayUnit = "L/月"; }
-                else { multiplier = val; displayUnit = "單位/月"; }
+            // 1. 抓取基礎容量 (精準配對數字與單位)
+            let volMatch = str.match(/([0-9.]+)\s*(gal|加侖|ml|毫升|kg|公斤|g|公克|l|公升)/);
+            if (volMatch) {
+                let val = parseFloat(volMatch[1]);
+                let unit = volMatch[2];
+                if (unit.includes('gal') || unit.includes('加侖')) { baseVol = val * 3.78541; displayUnit = "L/月"; }
+                else if (unit.includes('ml') || unit.includes('毫升')) { baseVol = val / 1000; displayUnit = "L/月"; }
+                else if (unit.includes('kg') || unit.includes('公斤')) { baseVol = val; displayUnit = "KG/月"; }
+                else if (unit.includes('g') || unit.includes('公克')) { baseVol = val / 1000; displayUnit = "KG/月"; }
+                else if (unit.includes('l') || unit.includes('公升')) { baseVol = val; displayUnit = "L/月"; }
+            } else {
+                // 若都沒寫標準單位，單純抓第一個數字
+                let numMatch = str.match(/([0-9.]+)/);
+                if(numMatch) {
+                    baseVol = parseFloat(numMatch[1]);
+                    displayUnit = "單位/月";
+                }
             }
+
+            // 2. 判斷是否有「箱」的換算 (例如 "1箱6桶"、"1箱3瓶")
+            let boxMultiplier = 1;
+            let boxMatch = str.match(/1箱([0-9]+)/); 
+            if (boxMatch) {
+                boxMultiplier = parseFloat(boxMatch[1]);
+            }
+
+            // 3. 最終倍率 = 基礎容量 * 每箱數量
+            let multiplier = baseVol * boxMultiplier;
+
             return { multiplier, unit: displayUnit };
         }
 
