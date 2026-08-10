@@ -1,0 +1,103 @@
+<!-- 在 </body> 標籤上方加入這段 Script -->
+    <script>
+        // 替換成您剛剛在 GAS 部署獲得的網頁應用程式網址
+        const API_URL = "https://script.google.com/macros/s/AKfycbxeMVg70GiAinBFEKHlB3-ykS0PT9GlF9WlGsArB4qcRHLhkB4SvxufCMypNhPobq-rMw/exec";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchInventoryData();
+        });
+
+        async function fetchInventoryData() {
+            try {
+                // 顯示載入中狀態
+                const container = document.getElementById('inventory-list');
+                if(container) container.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p>資料讀取中，請稍候...</p></div>';
+
+                const response = await fetch(API_URL);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    renderDashboard(result.data);
+                    renderItems(result.data);
+                } else {
+                    console.error("API 錯誤:", result.message);
+                    alert("資料讀取失敗，請檢查系統設定。");
+                }
+            } catch (error) {
+                console.error("連線失敗:", error);
+                alert("無法連線至資料庫。");
+            }
+        }
+
+        // 渲染上方四格儀表板
+        function renderDashboard(data) {
+            let total = data.length;
+            let good = 0;
+            let warning = 0;
+            let danger = 0;
+
+            data.forEach(item => {
+                let current = Number(item.currentStock) || 0;
+                let safe = Number(item.safeStock) || 0;
+                
+                if (current <= 0) {
+                    danger++;
+                } else if (current <= safe) {
+                    warning++;
+                } else {
+                    good++;
+                }
+            });
+
+            // 更新 HTML 內的數字
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-good').innerText = good;
+            document.getElementById('stat-warning').innerText = warning;
+            document.getElementById('stat-danger').innerText = danger;
+        }
+
+        // 渲染下方物料卡片
+        function renderItems(data) {
+            const container = document.getElementById('inventory-list');
+            if(!container) return;
+            container.innerHTML = ''; // 清空原本的卡片
+
+            data.forEach(item => {
+                let current = Number(item.currentStock) || 0;
+                let safe = Number(item.safeStock) || 0;
+                
+                // 判斷狀態與顏色
+                let statusColor = "green";
+                let statusIcon = "fa-check";
+                let statusText = "庫存充足";
+                
+                if (current <= 0) {
+                    statusColor = "red";
+                    statusIcon = "fa-xmark";
+                    statusText = "庫存為零";
+                } else if (current <= safe) {
+                    statusColor = "yellow";
+                    statusIcon = "fa-triangle-exclamation";
+                    statusText = "低於安全水位";
+                }
+
+                // 建立卡片 HTML
+                const cardHTML = `
+                <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-${statusColor}-400 relative">
+                    <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium">${item.category}</span>
+                    <h2 class="text-base font-bold text-gray-800 mb-2">${item.name} (${item.unit})</h2>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <i class="fa-solid fa-id-card text-purple-500 w-5"></i> 編號：${item.id}
+                    </div>
+                    <div class="text-sm text-gray-600 mb-1">
+                        <i class="fa-solid fa-cubes text-blue-500 w-5"></i> 目前庫存：${current} (安全值: ${safe})
+                    </div>
+                    <div class="text-sm text-gray-600">
+                        <span class="font-medium text-${statusColor}-600">狀態：<i class="fa-solid ${statusIcon}"></i> ${statusText}</span>
+                    </div>
+                </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHTML);
+            });
+        }
+    </script>
