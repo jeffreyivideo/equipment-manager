@@ -66,10 +66,26 @@
 
         <!-- ================= 區塊 2：進貨紀錄 (預設隱藏) ================= -->
         <div id="view-inbound" class="hidden">
-            <div class="text-center text-gray-500 py-10">
-                <i class="fa-solid fa-truck-ramp-box text-4xl mb-3 text-gray-300"></i>
-                <p>進貨紀錄功能開發中...</p>
-                <p class="text-sm mt-2">未來將在此顯示最新的進貨流水帳</p>
+            
+            <!-- 篩選器區塊 -->
+            <div class="flex space-x-2 mb-4">
+                <select id="filter-inbound-category" onchange="renderInbound()" class="block w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
+                    <option value="ALL">所有類別</option>
+                    <option value="清潔化學品">清潔化學品</option>
+                    <option value="個人防護具">個人防護具</option>
+                    <option value="交維與設備">交維與設備</option>
+                    <option value="環境用藥">環境用藥</option>
+                </select>
+                <select id="filter-inbound-terminal" onchange="renderInbound()" class="block w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
+                    <option value="ALL">所有航廈</option>
+                    <option value="T1">第一航廈</option>
+                    <option value="T2">第二航廈</option>
+                </select>
+            </div>
+
+            <!-- 進貨紀錄的卡片列表 -->
+            <div id="inbound-list-container" class="space-y-3">
+                <!-- JS 會將篩選後的資料塞入這裡 -->
             </div>
         </div>
 
@@ -85,9 +101,13 @@
     </main>
 
     <!-- 前端抓取資料的 Script -->
-    <script>
-        // 您最新的 API 網址
+    // 替換成您自己的 API 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbw_g-5UqUCtOVz5SLHO5C9kTFsZdItv891JoX_E2QGJ7K6-yoAFr2S5LExjp2m9b26N/exec";
+
+        // 宣告全域變數，用來存放資料供篩選器使用
+        let globalItemsData = [];
+        let globalInboundData = [];
+        let globalOutboundData = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             const dateObj = new Date();
@@ -99,16 +119,14 @@
             fetchInventoryData();
         });
 
-        // 頁籤切換邏輯 (保留您原本寫好的)
+        // 頁籤切換
         function switchTab(tabName) {
             const allTabs = ['tab-inventory', 'tab-inbound', 'tab-outbound'];
             allTabs.forEach(id => {
-                let el = document.getElementById(id);
-                el.className = "flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200";
+                document.getElementById(id).className = "flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200";
             });
 
-            let activeTab = document.getElementById(`tab-${tabName}`);
-            activeTab.className = "flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200";
+            document.getElementById(`tab-${tabName}`).className = "flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200";
 
             const allViews = ['view-inventory', 'view-inbound', 'view-outbound'];
             allViews.forEach(id => {
@@ -119,51 +137,50 @@
 
         async function fetchInventoryData() {
             try {
-                const container = document.getElementById('inventory-list');
-                if(container) container.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p>資料讀取中，請稍候...</p></div>';
+                // 顯示載入中
+                const invContainer = document.getElementById('inventory-list');
+                const inContainer = document.getElementById('inbound-list-container');
+                if(invContainer) invContainer.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
+                if(inContainer) inContainer.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
 
                 const response = await fetch(API_URL);
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    const allData = result.data;
+                    // 把資料存到全域變數
+                    globalItemsData = result.data.items;
+                    globalInboundData = result.data.inbound;
+                    globalOutboundData = result.data.outbound;
                     
-                    // 🌟 核心修改：只保留「個人防護具」與「交維與設備」
-                    const filteredItems = allData.items.filter(item => 
+                    // 1. 庫存總覽：只顯示防護具與設備
+                    const filteredItems = globalItemsData.filter(item => 
                         item.category === '個人防護具' || item.category === '交維與設備'
                     );
-                    
-                    // 將「過濾後」的資料交給上方的數字儀表板與下方的卡片渲染
                     renderDashboard(filteredItems);
                     renderItems(filteredItems);
                     
-                    // 進貨與發放紀錄保持不變 (若後續想一併過濾，也可以比照辦理)
-                    renderInbound(allData.inbound);
-                    renderOutbound(allData.outbound);
+                    // 2. 進貨與發放紀錄渲染
+                    renderInbound();
+                    renderOutbound(globalOutboundData);
                 } else {
-                    console.error("API 錯誤:", result.message);
                     alert("資料讀取失敗，請檢查系統設定。");
                 }
             } catch (error) {
-                console.error("連線失敗:", error);
                 alert("無法連線至資料庫。");
             }
         }
 
         // ============================================
-        // 以下為渲染資料的各種函數
+        // 渲染函數
         // ============================================
 
         function renderDashboard(data) {
-            let total = data.length;
-            let good = 0; let warning = 0; let danger = 0;
-
+            let total = data.length; let good = 0; let warning = 0; let danger = 0;
             data.forEach(item => {
                 let current = Number(item.currentStock) || 0;
                 let safe = Number(item.safeStock) || 0;
                 if (current <= 0) { danger++; } else if (current <= safe) { warning++; } else { good++; }
             });
-
             document.getElementById('stat-total').innerText = total;
             document.getElementById('stat-good').innerText = good;
             document.getElementById('stat-warning').innerText = warning;
@@ -176,15 +193,10 @@
             container.innerHTML = ''; 
 
             data.forEach(item => {
-                let current = Number(item.currentStock) || 0;
-                let safe = Number(item.safeStock) || 0;
-                
+                let current = Number(item.currentStock) || 0; let safe = Number(item.safeStock) || 0;
                 let statusColor = "green"; let statusIcon = "fa-check"; let statusText = "庫存充足";
-                if (current <= 0) {
-                    statusColor = "red"; statusIcon = "fa-xmark"; statusText = "庫存為零";
-                } else if (current <= safe) {
-                    statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於安全水位";
-                }
+                if (current <= 0) { statusColor = "red"; statusIcon = "fa-xmark"; statusText = "庫存為零"; } 
+                else if (current <= safe) { statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於安全水位"; }
 
                 const cardHTML = `
                 <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-${statusColor}-400 relative">
@@ -198,63 +210,107 @@
             });
         }
 
-        // 新增：渲染進貨紀錄 (自動產生藍色卡片)
-        function renderInbound(inboundData) {
-            const container = document.getElementById('view-inbound');
+        // 🌟 升級版：進貨紀錄渲染 (包含篩選邏輯與日期修復)
+        function renderInbound() {
+            const container = document.getElementById('inbound-list-container');
             if(!container) return;
             
-            if(!inboundData || inboundData.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-truck-ramp-box text-4xl mb-3 text-gray-300"></i><p>目前沒有進貨紀錄</p></div>`;
+            // 取得下拉選單目前的條件
+            const catFilter = document.getElementById('filter-inbound-category').value;
+            const termFilter = document.getElementById('filter-inbound-terminal').value;
+
+            // 建立物品對照表 (用 itemId 查詢 category)
+            let itemCategoryMap = {};
+            globalItemsData.forEach(item => itemCategoryMap[item.id] = item.category);
+
+            // 過濾資料
+            let filteredData = globalInboundData.filter(record => {
+                let recordCat = itemCategoryMap[record.itemId] || '其他';
+                
+                // 1. 判斷類別是否符合
+                let passCat = (catFilter === 'ALL' || recordCat === catFilter);
+                
+                // 2. 判斷航廈是否符合 (抓取單號中的 T1/T2 或 一/二航)
+                let passTerm = true;
+                if(termFilter !== 'ALL') {
+                    let isT1 = record.orderId.includes('T1') || record.orderId.includes('一航');
+                    let isT2 = record.orderId.includes('T2') || record.orderId.includes('二航');
+                    if (termFilter === 'T1' && !isT1) passTerm = false;
+                    if (termFilter === 'T2' && !isT2) passTerm = false;
+                }
+                
+                return passCat && passTerm;
+            });
+
+            if(filteredData.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-truck-ramp-box text-4xl mb-3 text-gray-300"></i><p>找不到符合條件的進貨紀錄</p></div>`;
                 return;
             }
 
-            let html = '<div class="space-y-3">';
-            inboundData.forEach(record => {
+            let html = '';
+            filteredData.forEach(record => {
+                // 修復日期格式：切掉 'T' 後面的時間
+                let cleanDate = String(record.date).split('T')[0];
+                
+                // 取得類別與航廈標籤
+                let catName = itemCategoryMap[record.itemId] || '其他';
+                let termBadge = '';
+                if(record.orderId.includes('T1') || record.orderId.includes('一航')) {
+                    termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>';
+                } else if(record.orderId.includes('T2') || record.orderId.includes('二航')) {
+                    termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>';
+                }
+
                 html += `
                 <div class="bg-white rounded-lg p-3 shadow-sm border-l-4 border-blue-400">
                     <div class="flex justify-between items-start mb-2">
-                        <div class="text-sm font-bold text-gray-800">${record.itemName}</div>
-                        <div class="text-xs text-gray-500">${record.date}</div>
+                        <div class="text-sm font-bold text-gray-800 leading-tight">${record.itemName}</div>
+                        <div class="text-xs text-gray-500 whitespace-nowrap ml-2">${cleanDate}</div>
                     </div>
-                    <div class="text-sm text-gray-600">
-                        <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-medium mr-2">進貨: +${record.quantity}</span>
-                        <span class="text-xs"><i class="fa-solid fa-truck text-gray-400"></i> ${record.supplier}</span>
+                    <div class="mb-2">
+                        ${termBadge}
+                        <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium">${catName}</span>
                     </div>
-                    <div class="text-xs text-gray-400 mt-2 text-right">單號: ${record.orderId}</div>
+                    <div class="text-sm text-gray-600 flex justify-between items-end mt-1">
+                        <div>
+                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-medium mr-2">進貨: +${record.quantity}</span>
+                            <span class="text-xs text-gray-500"><i class="fa-solid fa-truck text-gray-400"></i> ${record.supplier}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400">單號: ${record.orderId}</div>
+                    </div>
                 </div>`;
             });
-            html += '</div>';
             container.innerHTML = html;
         }
 
-        // 新增：渲染發放紀錄 (自動產生橘色卡片)
+        // 發放紀錄 (照舊，並修復日期格式)
         function renderOutbound(outboundData) {
             const container = document.getElementById('view-outbound');
             if(!container) return;
-            
             if(!outboundData || outboundData.length === 0) {
                 container.innerHTML = `<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-person-walking-arrow-right text-4xl mb-3 text-gray-300"></i><p>目前沒有發放紀錄</p></div>`;
                 return;
             }
-
             let html = '<div class="space-y-3">';
             outboundData.forEach(record => {
+                let cleanDate = String(record.date).split('T')[0];
                 html += `
                 <div class="bg-white rounded-lg p-3 shadow-sm border-l-4 border-orange-400">
                     <div class="flex justify-between items-start mb-2">
                         <div class="text-sm font-bold text-gray-800">${record.itemName}</div>
-                        <div class="text-xs text-gray-500">${record.date}</div>
+                        <div class="text-xs text-gray-500">${cleanDate}</div>
                     </div>
-                    <div class="text-sm text-gray-600">
-                        <span class="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded font-medium mr-2">發放: -${record.quantity}</span>
-                        <span class="text-xs"><i class="fa-solid fa-user text-gray-400"></i> ${record.recipient} (${record.location})</span>
+                    <div class="text-sm text-gray-600 flex justify-between items-end">
+                        <div>
+                            <span class="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded font-medium mr-2">發放: -${record.quantity}</span>
+                            <span class="text-xs text-gray-500"><i class="fa-solid fa-user text-gray-400"></i> ${record.recipient} (${record.location})</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400">單號: ${record.orderId}</div>
                     </div>
-                    <div class="text-xs text-gray-400 mt-2 text-right">單號: ${record.orderId}</div>
                 </div>`;
             });
             html += '</div>';
             container.innerHTML = html;
         }
-    </script>
 </body>
 </html>
