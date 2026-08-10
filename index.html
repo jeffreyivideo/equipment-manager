@@ -119,7 +119,6 @@
 
         async function fetchInventoryData() {
             try {
-                // ... (保留原本的 loading 狀態顯示，為了節省版面不贅述)
                 const container = document.getElementById('inventory-list');
                 if(container) container.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i><p>資料讀取中，請稍候...</p></div>';
 
@@ -127,13 +126,18 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    // ★ 關鍵改變：現在 result.data 是一個包含三個陣列的物件
                     const allData = result.data;
                     
-                    renderDashboard(allData.items);
-                    renderItems(allData.items);
+                    // 🌟 核心修改：只保留「個人防護具」與「交維與設備」
+                    const filteredItems = allData.items.filter(item => 
+                        item.category === '個人防護具' || item.category === '交維與設備'
+                    );
                     
-                    // ★ 呼叫新的渲染函數
+                    // 將「過濾後」的資料交給上方的數字儀表板與下方的卡片渲染
+                    renderDashboard(filteredItems);
+                    renderItems(filteredItems);
+                    
+                    // 進貨與發放紀錄保持不變 (若後續想一併過濾，也可以比照辦理)
                     renderInbound(allData.inbound);
                     renderOutbound(allData.outbound);
                 } else {
