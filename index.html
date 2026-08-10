@@ -278,7 +278,7 @@
             });
         }
 
-        // 🌟 升級版：進貨紀錄過濾機制 (加入品名過濾)
+        // 🌟 升級版：進貨紀錄 (按品名群組化，內含歷程明細)
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -291,6 +291,7 @@
                 itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim();
             });
 
+            // 1. 先進行資料過濾
             let filteredData = globalInboundData.filter(record => {
                 let recId = String(record.itemId || "").trim();
                 let recordCat = itemCategoryMap[recId] || '其他';
@@ -314,43 +315,65 @@
                 return;
             }
 
-            let html = '';
+            // 2. 將過濾後的資料依「品名 (itemId)」進行群組化合併
+            let groupedData = {};
             filteredData.forEach(record => {
-                let cleanDate = String(record.date || "").split('T')[0];
                 let recId = String(record.itemId || "").trim();
-                let catName = itemCategoryMap[recId] || '其他';
-                let orderStr = String(record.orderId || "");
-                
-                let termBadge = '';
-                if(orderStr.includes('T1') || orderStr.includes('一航')) {
-                    termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>';
-                } else if(orderStr.includes('T2') || orderStr.includes('二航')) {
-                    termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>';
+                if (!groupedData[recId]) {
+                    groupedData[recId] = {
+                        itemName: record.itemName,
+                        catName: itemCategoryMap[recId] || '其他',
+                        totalQty: 0,
+                        history: []
+                    };
                 }
-
-                html += `
-                <div class="bg-white rounded-lg p-3 shadow-sm border-l-4 border-blue-400">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="text-sm font-bold text-gray-800 leading-tight">${record.itemName}</div>
-                        <div class="text-xs text-gray-500 whitespace-nowrap ml-2">${cleanDate}</div>
-                    </div>
-                    <div class="mb-2">
-                        ${termBadge}
-                        <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium">${catName}</span>
-                    </div>
-                    <div class="text-sm text-gray-600 flex justify-between items-end mt-1">
-                        <div>
-                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-medium mr-2">進貨: +${record.quantity}</span>
-                            <span class="text-xs text-gray-500"><i class="fa-solid fa-truck text-gray-400"></i> ${record.supplier}</span>
-                        </div>
-                        <div class="text-[10px] text-gray-400">單號: ${orderStr}</div>
-                    </div>
-                </div>`;
+                groupedData[recId].totalQty += (Number(record.quantity) || 0);
+                groupedData[recId].history.push(record);
             });
+
+            // 3. 產出合併後的 HTML 卡片
+            let html = '';
+            for (const [recId, group] of Object.entries(groupedData)) {
+                
+                // 組裝內部的歷程明細列表
+                let historyHtml = '<div class="mt-3 space-y-1 border-t border-blue-100 pt-2">';
+                group.history.forEach(r => {
+                    let cleanDate = String(r.date || "").split('T')[0];
+                    let orderStr = String(r.orderId || "");
+                    
+                    let termBadge = '';
+                    if(orderStr.includes('T1') || orderStr.includes('一航')) {
+                        termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>';
+                    } else if(orderStr.includes('T2') || orderStr.includes('二航')) {
+                        termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>';
+                    }
+
+                    historyHtml += `
+                        <div class="flex justify-between items-center text-xs py-1 border-b border-gray-50 last:border-0">
+                            <div class="text-gray-600 flex items-center">${termBadge} ${cleanDate}</div>
+                            <div class="text-blue-700 font-medium">+${r.quantity} <span class="text-gray-400 font-normal ml-1 text-right">${r.supplier}</span></div>
+                        </div>
+                    `;
+                });
+                historyHtml += '</div>';
+
+                // 組裝外部的母卡片
+                html += `
+                <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500 mb-3">
+                    <div class="flex justify-between items-start mb-1">
+                        <div>
+                            <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span>
+                            <div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div>
+                        </div>
+                        <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">總計: +${group.totalQty}</div>
+                    </div>
+                    ${historyHtml}
+                </div>`;
+            }
             container.innerHTML = html;
         }
 
-        // 發放紀錄 (照舊)
+        // 🌟 升級版：發放紀錄 (按品名群組化，內含歷程明細)
         function renderOutbound() {
             const container = document.getElementById('outbound-list-container');
             if(!container) return;
@@ -358,25 +381,63 @@
                 container.innerHTML = `<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-person-walking-arrow-right text-4xl mb-3 text-gray-300"></i><p>目前沒有發放紀錄</p></div>`;
                 return;
             }
-            let html = '<div class="space-y-3">';
-            globalOutboundData.forEach(record => {
-                let cleanDate = String(record.date || "").split('T')[0];
-                html += `
-                <div class="bg-white rounded-lg p-3 shadow-sm border-l-4 border-orange-400">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="text-sm font-bold text-gray-800">${record.itemName}</div>
-                        <div class="text-xs text-gray-500">${cleanDate}</div>
-                    </div>
-                    <div class="text-sm text-gray-600 flex justify-between items-end">
-                        <div>
-                            <span class="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded font-medium mr-2">發放: -${record.quantity}</span>
-                            <span class="text-xs text-gray-500"><i class="fa-solid fa-user text-gray-400"></i> ${record.recipient} (${record.location})</span>
-                        </div>
-                        <div class="text-[10px] text-gray-400">單號: ${record.orderId}</div>
-                    </div>
-                </div>`;
+
+            let itemCategoryMap = {};
+            globalItemsData.forEach(item => {
+                itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim();
             });
-            html += '</div>';
+
+            let groupedData = {};
+            globalOutboundData.forEach(record => {
+                let recId = String(record.itemId || "").trim();
+                if (!groupedData[recId]) {
+                    groupedData[recId] = {
+                        itemName: record.itemName,
+                        catName: itemCategoryMap[recId] || '其他',
+                        totalQty: 0,
+                        history: []
+                    };
+                }
+                groupedData[recId].totalQty += (Number(record.quantity) || 0);
+                groupedData[recId].history.push(record);
+            });
+
+            let html = '';
+            for (const [recId, group] of Object.entries(groupedData)) {
+                
+                let historyHtml = '<div class="mt-3 space-y-1 border-t border-orange-100 pt-2">';
+                group.history.forEach(r => {
+                    let cleanDate = String(r.date || "").split('T')[0];
+                    let orderStr = String(r.orderId || "");
+                    
+                    let termBadge = '';
+                    if(orderStr.includes('T1') || orderStr.includes('一航')) {
+                        termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>';
+                    } else if(orderStr.includes('T2') || orderStr.includes('二航')) {
+                        termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>';
+                    }
+
+                    historyHtml += `
+                        <div class="flex justify-between items-center text-xs py-1 border-b border-gray-50 last:border-0">
+                            <div class="text-gray-600 flex items-center">${termBadge} ${cleanDate}</div>
+                            <div class="text-orange-700 font-medium">-${r.quantity} <span class="text-gray-400 font-normal ml-1 text-right">${r.recipient}</span></div>
+                        </div>
+                    `;
+                });
+                historyHtml += '</div>';
+
+                html += `
+                <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-orange-500 mb-3">
+                    <div class="flex justify-between items-start mb-1">
+                        <div>
+                            <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span>
+                            <div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div>
+                        </div>
+                        <div class="text-xs font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-100">總計: -${group.totalQty}</div>
+                    </div>
+                    ${historyHtml}
+                </div>`;
+            }
             container.innerHTML = html;
         }
     </script>
