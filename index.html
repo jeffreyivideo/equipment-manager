@@ -294,7 +294,7 @@
             });
         }
 
-        // 🌟 升級版：進貨紀錄 (內建化學品 L/月 申報數據自動精算)
+        // 🌟 升級版：進貨紀錄 (日期最新優先 + 使用量依進貨估算)
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -354,54 +354,44 @@
                     let itemInfo = globalItemsData.find(i => i.id === recId);
                     let unitStr = itemInfo ? itemInfo.unit : "";
 
-                    // 計算「貯存」(進貨) 的每月統計
+                    // 🌟 改變邏輯：不論「使用」或「貯存」，皆以「進貨紀錄」來精算每月數量
                     let monthlyInbound = {};
                     group.history.forEach(r => {
-                        let date = new Date(String(r.date).replace(/-/g, '/'));
-                        let mk = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2, '0');
-                        if(!monthlyInbound[mk]) monthlyInbound[mk] = 0;
-                        monthlyInbound[mk] += (Number(r.quantity) || 0);
+                        // 確保格式統一並抓取 年-月
+                        let dStr = String(r.date || "").replace(/\//g, '-');
+                        let parts = dStr.split('-');
+                        if(parts.length >= 2) {
+                            let mk = parts[0] + '-' + parts[1];
+                            if(!monthlyInbound[mk]) monthlyInbound[mk] = 0;
+                            monthlyInbound[mk] += (Number(r.quantity) || 0);
+                        }
                     });
+                    
                     let inVals = Object.values(monthlyInbound);
-                    let storeMaxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
-                    let storeAvgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
+                    let maxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
+                    let avgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
                     
-                    let storeMaxL = convertToLiters(storeMaxQty, unitStr).toFixed(1);
-                    let storeAvgL = convertToLiters(storeAvgQty, unitStr).toFixed(1);
+                    // 換算成公升 (L)
+                    let finalMaxL = convertToLiters(maxQty, unitStr).toFixed(1);
+                    let finalAvgL = convertToLiters(avgQty, unitStr).toFixed(1);
 
-                    // 計算「使用」(發放) 的每月統計
-                    let monthlyOutbound = {};
-                    let relatedOutbound = globalOutboundData.filter(r => String(r.itemId).trim() === recId);
-                    relatedOutbound.forEach(r => {
-                        let date = new Date(String(r.date).replace(/-/g, '/'));
-                        let mk = date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2, '0');
-                        if(!monthlyOutbound[mk]) monthlyOutbound[mk] = 0;
-                        monthlyOutbound[mk] += (Number(r.quantity) || 0);
-                    });
-                    let outVals = Object.values(monthlyOutbound);
-                    let useMaxQty = outVals.length > 0 ? Math.max(...outVals) : 0;
-                    let useAvgQty = outVals.length > 0 ? (outVals.reduce((a,b)=>a+b,0) / outVals.length) : 0;
-                    
-                    let useMaxL = convertToLiters(useMaxQty, unitStr).toFixed(1);
-                    let useAvgL = convertToLiters(useAvgQty, unitStr).toFixed(1);
-
-                    // 產出專屬的紫色數據看板
+                    // 產出專屬的紫色數據看板 (顯示相同的進貨推估數據)
                     analyzeHtml = `
                     <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100">
                         <div class="text-[11px] font-bold text-indigo-800 mb-2"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: L/月)</div>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="bg-white rounded p-1.5 text-center shadow-sm">
-                                <div class="text-[10px] text-gray-500 font-bold mb-1">使用 (依發放)</div>
+                                <div class="text-[10px] text-gray-500 font-bold mb-1">使用 <span class="text-gray-400">(依進貨推估)</span></div>
                                 <div class="flex justify-around">
-                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-indigo-600">${useAvgL}</div></div>
-                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${useMaxL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-indigo-600">${finalAvgL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalMaxL}</div></div>
                                 </div>
                             </div>
                             <div class="bg-white rounded p-1.5 text-center shadow-sm">
-                                <div class="text-[10px] text-gray-500 font-bold mb-1">貯存 (依進貨)</div>
+                                <div class="text-[10px] text-gray-500 font-bold mb-1">貯存 <span class="text-gray-400">(依進貨計算)</span></div>
                                 <div class="flex justify-around">
-                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-teal-600">${storeAvgL}</div></div>
-                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${storeMaxL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-teal-600">${finalAvgL}</div></div>
+                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalMaxL}</div></div>
                                 </div>
                             </div>
                         </div>
@@ -409,7 +399,7 @@
                     </div>`;
                 }
                 
-                // 拆分一二航明細 (維持原本邏輯)
+                // 拆分一二航明細
                 let t1Records = []; let t2Records = [];
                 group.history.forEach(r => {
                     let orderStr = String(r.orderId || "");
@@ -418,8 +408,14 @@
                     else { t1Records.push(r); }
                 });
 
-                const sortDesc = (a, b) => new Date(String(b.date).replace(/-/g, '/')) - new Date(String(a.date).replace(/-/g, '/'));
-                t1Records.sort(sortDesc); t2Records.sort(sortDesc);
+                // 🌟 強制字串降冪排序：確保最新日期 (如 2026) 永遠排在最上面
+                const sortDesc = (a, b) => {
+                    let dA = String(a.date || "").replace(/\//g, '-');
+                    let dB = String(b.date || "").replace(/\//g, '-');
+                    return dB.localeCompare(dA);
+                };
+                t1Records.sort(sortDesc); 
+                t2Records.sort(sortDesc);
 
                 let historyHtml = '';
                 if(t1Records.length > 0) {
