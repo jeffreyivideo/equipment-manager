@@ -71,10 +71,10 @@
             <div class="flex space-x-2 mb-4">
                 <select id="filter-inbound-category" onchange="renderInbound()" class="block w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
                     <option value="ALL">所有類別</option>
-                    <option value="清潔化學品">清潔化學品</option>
-                    <option value="個人防護具">個人防護具</option>
-                    <option value="交維與設備">交維與設備</option>
-                    <option value="環境用藥">環境用藥</option>
+                    <option value="清潔">清潔化學品</option>
+                    <option value="防護">個人防護具</option>
+                    <option value="設備">交維與設備</option>
+                    <option value="環境">環境用藥</option>
                 </select>
                 <select id="filter-inbound-terminal" onchange="renderInbound()" class="block w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
                     <option value="ALL">所有航廈</option>
@@ -105,7 +105,6 @@
         // 替換成您自己的 API 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbw_g-5UqUCtOVz5SLHO5C9kTFsZdItv891JoX_E2QGJ7K6-yoAFr2S5LExjp2m9b26N/exec";
 
-        // 宣告全域變數，用來存放資料供篩選器使用
         let globalItemsData = [];
         let globalInboundData = [];
         let globalOutboundData = [];
@@ -116,29 +115,22 @@
             const month = dateObj.getMonth() + 1;
             const day = dateObj.getDate();
             document.getElementById('current-date').innerText = `${year}年${month}月${day}日`;
-            
             fetchInventoryData();
         });
 
-        // 頁籤切換
         function switchTab(tabName) {
             const allTabs = ['tab-inventory', 'tab-inbound', 'tab-outbound'];
             allTabs.forEach(id => {
                 document.getElementById(id).className = "flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200";
             });
-
             document.getElementById(`tab-${tabName}`).className = "flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200";
-
             const allViews = ['view-inventory', 'view-inbound', 'view-outbound'];
-            allViews.forEach(id => {
-                document.getElementById(id).style.display = 'none';
-            });
+            allViews.forEach(id => { document.getElementById(id).style.display = 'none'; });
             document.getElementById(`view-${tabName}`).style.display = 'block';
         }
 
         async function fetchInventoryData() {
             try {
-                // 顯示載入中
                 const invContainer = document.getElementById('inventory-list');
                 const inContainer = document.getElementById('inbound-list-container');
                 if(invContainer) invContainer.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
@@ -148,19 +140,18 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    // 把資料存到全域變數
                     globalItemsData = result.data.items;
                     globalInboundData = result.data.inbound;
                     globalOutboundData = result.data.outbound;
                     
-                    // 1. 庫存總覽：只顯示防護具與設備
-                    const filteredItems = globalItemsData.filter(item => 
-                        item.category === '個人防護具' || item.category === '交維與設備'
-                    );
+                    // 🌟 容錯升級：只要包含關鍵字，且無視多餘空白，就會被抓出來
+                    const filteredItems = globalItemsData.filter(item => {
+                        let cat = String(item.category || "").trim();
+                        return cat.includes('防護') || cat.includes('設備');
+                    });
+                    
                     renderDashboard(filteredItems);
                     renderItems(filteredItems);
-                    
-                    // 2. 進貨與發放紀錄渲染
                     renderInbound();
                     renderOutbound(globalOutboundData);
                 } else {
@@ -170,10 +161,6 @@
                 alert("無法連線至資料庫。");
             }
         }
-
-        // ============================================
-        // 渲染函數
-        // ============================================
 
         function renderDashboard(data) {
             let total = data.length; let good = 0; let warning = 0; let danger = 0;
@@ -192,13 +179,11 @@
             const container = document.getElementById('inventory-list');
             if(!container) return;
             container.innerHTML = ''; 
-
             data.forEach(item => {
                 let current = Number(item.currentStock) || 0; let safe = Number(item.safeStock) || 0;
                 let statusColor = "green"; let statusIcon = "fa-check"; let statusText = "庫存充足";
                 if (current <= 0) { statusColor = "red"; statusIcon = "fa-xmark"; statusText = "庫存為零"; } 
-                else if (current <= safe) { statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於安全水位"; }
-
+                else if (current <= safe) { statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於水位"; }
                 const cardHTML = `
                 <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-${statusColor}-400 relative">
                     <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium">${item.category}</span>
@@ -211,35 +196,35 @@
             });
         }
 
-        // 🌟 升級版：進貨紀錄渲染 (包含篩選邏輯與日期修復)
+        // 🌟 容錯升級：進貨紀錄過濾機制
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
-            
-            // 取得下拉選單目前的條件
             const catFilter = document.getElementById('filter-inbound-category').value;
             const termFilter = document.getElementById('filter-inbound-terminal').value;
 
-            // 建立物品對照表 (用 itemId 查詢 category)
+            // 對照表去空白防呆
             let itemCategoryMap = {};
-            globalItemsData.forEach(item => itemCategoryMap[item.id] = item.category);
+            globalItemsData.forEach(item => {
+                let id = String(item.id || "").trim();
+                itemCategoryMap[id] = String(item.category || "").trim();
+            });
 
-            // 過濾資料
             let filteredData = globalInboundData.filter(record => {
-                let recordCat = itemCategoryMap[record.itemId] || '其他';
+                let recId = String(record.itemId || "").trim();
+                let recordCat = itemCategoryMap[recId] || '其他';
                 
-                // 1. 判斷類別是否符合
-                let passCat = (catFilter === 'ALL' || recordCat === catFilter);
+                // 用 includes 模糊比對
+                let passCat = (catFilter === 'ALL' || recordCat.includes(catFilter));
                 
-                // 2. 判斷航廈是否符合 (抓取單號中的 T1/T2 或 一/二航)
                 let passTerm = true;
                 if(termFilter !== 'ALL') {
-                    let isT1 = record.orderId.includes('T1') || record.orderId.includes('一航');
-                    let isT2 = record.orderId.includes('T2') || record.orderId.includes('二航');
+                    let orderStr = String(record.orderId || "");
+                    let isT1 = orderStr.includes('T1') || orderStr.includes('一航');
+                    let isT2 = orderStr.includes('T2') || orderStr.includes('二航');
                     if (termFilter === 'T1' && !isT1) passTerm = false;
                     if (termFilter === 'T2' && !isT2) passTerm = false;
                 }
-                
                 return passCat && passTerm;
             });
 
@@ -250,15 +235,15 @@
 
             let html = '';
             filteredData.forEach(record => {
-                // 修復日期格式：切掉 'T' 後面的時間
-                let cleanDate = String(record.date).split('T')[0];
+                let cleanDate = String(record.date || "").split('T')[0];
+                let recId = String(record.itemId || "").trim();
+                let catName = itemCategoryMap[recId] || '其他';
+                let orderStr = String(record.orderId || "");
                 
-                // 取得類別與航廈標籤
-                let catName = itemCategoryMap[record.itemId] || '其他';
                 let termBadge = '';
-                if(record.orderId.includes('T1') || record.orderId.includes('一航')) {
+                if(orderStr.includes('T1') || orderStr.includes('一航')) {
                     termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>';
-                } else if(record.orderId.includes('T2') || record.orderId.includes('二航')) {
+                } else if(orderStr.includes('T2') || orderStr.includes('二航')) {
                     termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>';
                 }
 
@@ -284,7 +269,6 @@
             container.innerHTML = html;
         }
 
-        // 發放紀錄 (照舊，並修復日期格式)
         function renderOutbound(outboundData) {
             const container = document.getElementById('view-outbound');
             if(!container) return;
@@ -294,7 +278,7 @@
             }
             let html = '<div class="space-y-3">';
             outboundData.forEach(record => {
-                let cleanDate = String(record.date).split('T')[0];
+                let cleanDate = String(record.date || "").split('T')[0];
                 html += `
                 <div class="bg-white rounded-lg p-3 shadow-sm border-l-4 border-orange-400">
                     <div class="flex justify-between items-start mb-2">
