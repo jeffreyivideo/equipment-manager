@@ -100,8 +100,9 @@
 
     </main>
 
-    <!-- 前端抓取資料的 Script -->
-    // 替換成您自己的 API 網址
+    <!-- 前端抓取資料的 Script (一定要有這行 script 標籤) -->
+    <script>
+        // 替換成您自己的 API 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbw_g-5UqUCtOVz5SLHO5C9kTFsZdItv891JoX_E2QGJ7K6-yoAFr2S5LExjp2m9b26N/exec";
 
         // 宣告全域變數，用來存放資料供篩選器使用
@@ -312,5 +313,6 @@
             html += '</div>';
             container.innerHTML = html;
         }
+    </script>
 </body>
 </html>
