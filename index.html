@@ -286,7 +286,7 @@
             return { multiplier, unit: displayUnit };
         }
 
-        // 🌟 升級版：進貨紀錄 (無符號、等比例計算、支援KG)
+        // 🌟 終極版：進貨紀錄 (一二航廈獨立精算 + 無符號淨白版面)
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -335,70 +335,42 @@
                 groupedData[recId].history.push(record);
             });
 
+            // 輔助計算函數：將個別航廈的紀錄進行按月加總與換算
+            function calcStats(records, multiplier) {
+                let monthly = {};
+                records.forEach(r => {
+                    let dStr = String(r.date || "").replace(/\//g, '-');
+                    let parts = dStr.split('-');
+                    if(parts.length >= 2) {
+                        let mk = parts[0] + '-' + parts[1];
+                        if(!monthly[mk]) monthly[mk] = 0;
+                        monthly[mk] += (Number(r.quantity) || 0);
+                    }
+                });
+                
+                let inVals = Object.values(monthly);
+                let rawMaxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
+                let rawAvgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
+                
+                let useAvgVal = rawAvgQty * multiplier;
+                let useMaxVal = rawMaxQty * multiplier;
+                let storeAvgVal = useMaxVal; // 貯存平均 = 使用最大
+                let storeMaxVal = storeAvgVal; 
+                if (useAvgVal > 0) {
+                    storeMaxVal = storeAvgVal * (useMaxVal / useAvgVal); // 等比例推算
+                }
+                return {
+                    useAvg: useAvgVal.toFixed(1),
+                    useMax: useMaxVal.toFixed(1),
+                    storeAvg: storeAvgVal.toFixed(1),
+                    storeMax: storeMaxVal.toFixed(1)
+                };
+            }
+
             let html = '';
             for (const [recId, group] of Object.entries(groupedData)) {
                 
-                let analyzeHtml = '';
-                if (group.catName.includes('清潔')) {
-                    let itemInfo = globalItemsData.find(i => i.id === recId);
-                    let unitStr = itemInfo ? itemInfo.unit : "";
-
-                    let monthlyInbound = {};
-                    group.history.forEach(r => {
-                        let dStr = String(r.date || "").replace(/\//g, '-');
-                        let parts = dStr.split('-');
-                        if(parts.length >= 2) {
-                            let mk = parts[0] + '-' + parts[1];
-                            if(!monthlyInbound[mk]) monthlyInbound[mk] = 0;
-                            monthlyInbound[mk] += (Number(r.quantity) || 0);
-                        }
-                    });
-                    
-                    let inVals = Object.values(monthlyInbound);
-                    let rawMaxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
-                    let rawAvgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
-                    
-                    // 取得倍率與單位 (L 或 KG)
-                    let unitData = parseUnitMultiplier(unitStr);
-                    
-                    // 依據法規邏輯精算
-                    let useAvgVal = rawAvgQty * unitData.multiplier;
-                    let useMaxVal = rawMaxQty * unitData.multiplier;
-                    
-                    let storeAvgVal = useMaxVal; // 使用最大量 = 貯存平均數量
-                    let storeMaxVal = storeAvgVal; 
-                    if (useAvgVal > 0) {
-                        storeMaxVal = storeAvgVal * (useMaxVal / useAvgVal); // 等比例計算
-                    }
-
-                    let finalUseAvg = useAvgVal.toFixed(1);
-                    let finalUseMax = useMaxVal.toFixed(1);
-                    let finalStoreAvg = storeAvgVal.toFixed(1);
-                    let finalStoreMax = storeMaxVal.toFixed(1);
-
-                    analyzeHtml = `
-                    <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100">
-                        <div class="text-[11px] font-bold text-indigo-800 mb-2"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: ${unitData.unit})</div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-white rounded p-1.5 text-center shadow-sm">
-                                <div class="text-[10px] text-gray-600 font-bold mb-1">使用</div>
-                                <div class="flex justify-around">
-                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-indigo-600">${finalUseAvg}</div></div>
-                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalUseMax}</div></div>
-                                </div>
-                            </div>
-                            <div class="bg-white rounded p-1.5 text-center shadow-sm">
-                                <div class="text-[10px] text-gray-600 font-bold mb-1">貯存</div>
-                                <div class="flex justify-around">
-                                    <div><div class="text-[9px] text-gray-400">平均</div><div class="text-sm font-bold text-teal-600">${finalStoreAvg}</div></div>
-                                    <div><div class="text-[9px] text-gray-400">最大</div><div class="text-sm font-bold text-red-500">${finalStoreMax}</div></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="text-[9px] text-indigo-400 mt-1 text-right">依據規格「${unitStr}」自動換算</div>
-                    </div>`;
-                }
-                
+                // 1. 先把一航與二航的明細拆開 (後續面板與列表都會用到)
                 let t1Records = []; let t2Records = [];
                 group.history.forEach(r => {
                     let orderStr = String(r.orderId || "");
@@ -407,6 +379,66 @@
                     else { t1Records.push(r); }
                 });
 
+                // 2. 處理申報數據看板
+                let analyzeHtml = '';
+                if (group.catName.includes('清潔')) {
+                    let itemInfo = globalItemsData.find(i => i.id === recId);
+                    let unitStr = itemInfo ? itemInfo.unit : "";
+                    let unitData = parseUnitMultiplier(unitStr);
+                    
+                    let t1Stats = calcStats(t1Records, unitData.multiplier);
+                    let t2Stats = calcStats(t2Records, unitData.multiplier);
+
+                    analyzeHtml = `
+                    <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100 space-y-2">
+                        <div class="text-[11px] font-bold text-indigo-800"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: ${unitData.unit})</div>
+                        
+                        <!-- 一航專屬數據卡 -->
+                        <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-indigo-400">
+                            <div class="text-[10px] text-indigo-800 font-bold mb-1">一航</div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="text-center border-r border-gray-100">
+                                    <div class="text-[9px] text-gray-500 mb-1">使用</div>
+                                    <div class="flex justify-around">
+                                        <div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t1Stats.useAvg}</div></div>
+                                        <div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.useMax}</div></div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-[9px] text-gray-500 mb-1">貯存</div>
+                                    <div class="flex justify-around">
+                                        <div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t1Stats.storeAvg}</div></div>
+                                        <div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.storeMax}</div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 二航專屬數據卡 -->
+                        <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-teal-400">
+                            <div class="text-[10px] text-teal-800 font-bold mb-1">二航</div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="text-center border-r border-gray-100">
+                                    <div class="text-[9px] text-gray-500 mb-1">使用</div>
+                                    <div class="flex justify-around">
+                                        <div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t2Stats.useAvg}</div></div>
+                                        <div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.useMax}</div></div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <div class="text-[9px] text-gray-500 mb-1">貯存</div>
+                                    <div class="flex justify-around">
+                                        <div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t2Stats.storeAvg}</div></div>
+                                        <div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.storeMax}</div></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-[9px] text-indigo-400 mt-1 text-right">依據規格「${unitStr}」自動換算</div>
+                    </div>`;
+                }
+                
+                // 3. 處理下方列表 (日期強制排序)
                 const sortDesc = (a, b) => {
                     let dA = String(a.date || "").replace(/\//g, '-');
                     let dB = String(b.date || "").replace(/\//g, '-');
