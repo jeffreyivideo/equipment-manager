@@ -17,13 +17,13 @@
 
     <!-- 頁籤 (Tabs) -->
     <div class="flex bg-white border-b border-gray-200 sticky top-[52px] z-40">
-        <div class="flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold">
+        <div id="tab-inventory" onclick="switchTab('inventory')" class="flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200">
             <i class="fa-solid fa-box-open mr-1"></i> 庫存總覽
         </div>
-        <div class="flex-1 text-center py-3 text-gray-500 font-medium">
+        <div id="tab-inbound" onclick="switchTab('inbound')" class="flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200">
             <i class="fa-solid fa-chart-simple mr-1"></i> 進貨紀錄
         </div>
-        <div class="flex-1 text-center py-3 text-gray-500 font-medium">
+        <div id="tab-outbound" onclick="switchTab('outbound')" class="flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200">
             <i class="fa-solid fa-clipboard-check mr-1"></i> 發放紀錄
         </div>
     </div>
@@ -36,29 +36,50 @@
             讀取日期中...
         </div>
 
-        <!-- 數據儀表板 (已加入 ID 供 JS 綁定) -->
-        <div class="grid grid-cols-4 gap-2 mb-5">
-            <div class="bg-white border border-blue-200 rounded-lg p-2 text-center shadow-sm">
-                <div id="stat-total" class="text-xl font-bold text-blue-500">-</div>
-                <div class="text-[10px] text-gray-500 mt-1">全部品項</div>
+        <!-- ================= 區塊 1：庫存總覽 (預設顯示) ================= -->
+        <div id="view-inventory" class="block">
+            <!-- 數據儀表板 (已加入 ID 供 JS 綁定) -->
+            <div class="grid grid-cols-4 gap-2 mb-5">
+                <div class="bg-white border border-blue-200 rounded-lg p-2 text-center shadow-sm">
+                    <div id="stat-total" class="text-xl font-bold text-blue-500">-</div>
+                    <div class="text-[10px] text-gray-500 mt-1">全部品項</div>
+                </div>
+                <div class="bg-white border border-green-200 rounded-lg p-2 text-center shadow-sm">
+                    <div id="stat-good" class="text-xl font-bold text-green-500">-</div>
+                    <div class="text-[10px] text-gray-500 mt-1"><i class="fa-regular fa-circle-check"></i> 庫存充足</div>
+                </div>
+                <div class="bg-white border border-yellow-200 rounded-lg p-2 text-center shadow-sm">
+                    <div id="stat-warning" class="text-xl font-bold text-yellow-500">-</div>
+                    <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> 叫貨警戒</div>
+                </div>
+                <div class="bg-white border border-red-200 rounded-lg p-2 text-center shadow-sm">
+                    <div id="stat-danger" class="text-xl font-bold text-red-500">-</div>
+                    <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-xmark"></i> 庫存為零</div>
+                </div>
             </div>
-            <div class="bg-white border border-green-200 rounded-lg p-2 text-center shadow-sm">
-                <div id="stat-good" class="text-xl font-bold text-green-500">-</div>
-                <div class="text-[10px] text-gray-500 mt-1"><i class="fa-regular fa-circle-check"></i> 庫存充足</div>
-            </div>
-            <div class="bg-white border border-yellow-200 rounded-lg p-2 text-center shadow-sm">
-                <div id="stat-warning" class="text-xl font-bold text-yellow-500">-</div>
-                <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> 叫貨警戒</div>
-            </div>
-            <div class="bg-white border border-red-200 rounded-lg p-2 text-center shadow-sm">
-                <div id="stat-danger" class="text-xl font-bold text-red-500">-</div>
-                <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-xmark"></i> 庫存為零</div>
+
+            <!-- 動態生成的卡片列表容器 -->
+            <div id="inventory-list" class="space-y-3">
+                <!-- JavaScript 會把資料倒進這裡 -->
             </div>
         </div>
 
-        <!-- 動態生成的卡片列表容器 (已加入 ID) -->
-        <div id="inventory-list" class="space-y-3">
-            <!-- JavaScript 會把資料倒進這裡 -->
+        <!-- ================= 區塊 2：進貨紀錄 (預設隱藏) ================= -->
+        <div id="view-inbound" class="hidden">
+            <div class="text-center text-gray-500 py-10">
+                <i class="fa-solid fa-truck-ramp-box text-4xl mb-3 text-gray-300"></i>
+                <p>進貨紀錄功能開發中...</p>
+                <p class="text-sm mt-2">未來將在此顯示最新的進貨流水帳</p>
+            </div>
+        </div>
+
+        <!-- ================= 區塊 3：發放紀錄 (預設隱藏) ================= -->
+        <div id="view-outbound" class="hidden">
+            <div class="text-center text-gray-500 py-10">
+                <i class="fa-solid fa-person-walking-arrow-right text-4xl mb-3 text-gray-300"></i>
+                <p>發放紀錄功能開發中...</p>
+                <p class="text-sm mt-2">未來將在此顯示現場人員領用狀況</p>
+            </div>
         </div>
 
     </main>
@@ -171,6 +192,28 @@
                 `;
                 container.insertAdjacentHTML('beforeend', cardHTML);
             });
+        }
+        // 切換頁籤邏輯
+        function switchTab(tabName) {
+            // 1. 先把所有頁籤的樣式重置 (變成灰色、沒有底線)
+            const allTabs = ['tab-inventory', 'tab-inbound', 'tab-outbound'];
+            allTabs.forEach(id => {
+                let el = document.getElementById(id);
+                el.className = "flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200";
+            });
+
+            // 2. 把被點擊的頁籤變亮 (加上深藍色字體與底線)
+            let activeTab = document.getElementById(`tab-${tabName}`);
+            activeTab.className = "flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200";
+
+            // 3. 隱藏所有內容區塊
+            const allViews = ['view-inventory', 'view-inbound', 'view-outbound'];
+            allViews.forEach(id => {
+                document.getElementById(id).style.display = 'none'; // 強制隱藏
+            });
+
+            // 4. 顯示對應的內容區塊
+            document.getElementById(`view-${tabName}`).style.display = 'block'; // 強制顯示
         }
     </script>
 </body>
