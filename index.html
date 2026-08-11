@@ -16,102 +16,72 @@
     </header>
 
     <!-- 頁籤 (Tabs) -->
-    <div class="flex bg-white border-b border-gray-200 sticky top-[52px] z-40">
+    <div class="flex bg-white border-b border-gray-200 sticky top-[52px] z-40 text-sm">
         <div id="tab-inventory" onclick="switchTab('inventory')" class="flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200">
-            <i class="fa-solid fa-box-open mr-1"></i> 庫存總覽
+            庫存總覽
         </div>
         <div id="tab-inbound" onclick="switchTab('inbound')" class="flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200">
-            <i class="fa-solid fa-chart-simple mr-1"></i> 進貨紀錄
+            進貨紀錄
         </div>
         <div id="tab-outbound" onclick="switchTab('outbound')" class="flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200">
-            <i class="fa-solid fa-clipboard-check mr-1"></i> 發放紀錄
+            發放紀錄
+        </div>
+        <div id="tab-audit" onclick="switchTab('audit')" class="flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200">
+            盤點紀錄
         </div>
     </div>
 
     <!-- 內容區域 -->
     <main class="max-w-md mx-auto mt-4 px-3">
         
-        <!-- 自動顯示當前日期 -->
-        <div class="bg-gray-200 text-center py-2 rounded-lg text-gray-700 font-medium mb-4 shadow-sm" id="current-date">
-            讀取日期中...
-        </div>
+        <div class="bg-gray-200 text-center py-2 rounded-lg text-gray-700 font-medium mb-4 shadow-sm" id="current-date">讀取日期中...</div>
 
-        <!-- ================= 區塊 1：庫存總覽 ================= -->
+        <!-- 區塊 1：庫存總覽 -->
         <div id="view-inventory" class="block">
-            <!-- 數據儀表板 (維持防護具與設備統計) -->
             <div class="grid grid-cols-4 gap-2 mb-3">
-                <div class="bg-white border border-blue-200 rounded-lg p-2 text-center shadow-sm">
-                    <div id="stat-total" class="text-xl font-bold text-blue-500">-</div>
-                    <div class="text-[10px] text-gray-500 mt-1">全部品項</div>
-                </div>
-                <div class="bg-white border border-green-200 rounded-lg p-2 text-center shadow-sm">
-                    <div id="stat-good" class="text-xl font-bold text-green-500">-</div>
-                    <div class="text-[10px] text-gray-500 mt-1"><i class="fa-regular fa-circle-check"></i> 庫存充足</div>
-                </div>
-                <div class="bg-white border border-yellow-200 rounded-lg p-2 text-center shadow-sm">
-                    <div id="stat-warning" class="text-xl font-bold text-yellow-500">-</div>
-                    <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> 叫貨警戒</div>
-                </div>
-                <div class="bg-white border border-red-200 rounded-lg p-2 text-center shadow-sm">
-                    <div id="stat-danger" class="text-xl font-bold text-red-500">-</div>
-                    <div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-xmark"></i> 庫存為零</div>
-                </div>
+                <div class="bg-white border border-blue-200 rounded-lg p-2 text-center shadow-sm"><div id="stat-total" class="text-xl font-bold text-blue-500">-</div><div class="text-[10px] text-gray-500 mt-1">全部品項</div></div>
+                <div class="bg-white border border-green-200 rounded-lg p-2 text-center shadow-sm"><div id="stat-good" class="text-xl font-bold text-green-500">-</div><div class="text-[10px] text-gray-500 mt-1"><i class="fa-regular fa-circle-check"></i> 庫存充足</div></div>
+                <div class="bg-white border border-yellow-200 rounded-lg p-2 text-center shadow-sm"><div id="stat-warning" class="text-xl font-bold text-yellow-500">-</div><div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> 叫貨警戒</div></div>
+                <div class="bg-white border border-red-200 rounded-lg p-2 text-center shadow-sm"><div id="stat-danger" class="text-xl font-bold text-red-500">-</div><div class="text-[10px] text-gray-500 mt-1"><i class="fa-solid fa-xmark"></i> 庫存為零</div></div>
             </div>
-
-            <!-- 🌟 新增：庫存品名快速搜尋列 -->
             <div class="mb-4">
-                <input type="text" id="search-inventory" onkeyup="renderItems()" placeholder="🔍 快速搜尋品名或編號 (例: S-001)" class="w-full p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
+                <input type="text" id="search-inventory" onkeyup="renderItems()" placeholder="🔍 快速搜尋品名或編號" class="w-full p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
             </div>
-
-            <div id="inventory-list" class="space-y-3">
-                <!-- JS 會把資料倒進這裡 -->
-            </div>
+            <div id="inventory-list" class="space-y-3"></div>
         </div>
 
-        <!-- ================= 區塊 2：進貨紀錄 ================= -->
+        <!-- 區塊 2：進貨紀錄 -->
         <div id="view-inbound" class="hidden">
-            
-            <!-- 🌟 升級版篩選器區塊 (三層連動) -->
             <div class="flex flex-col space-y-2 mb-4">
                 <div class="flex space-x-2">
-                    <select id="filter-inbound-category" onchange="updateInboundItemOptions(); renderInbound()" class="block w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
-                        <option value="ALL">所有類別</option>
-                        <option value="清潔">清潔化學品</option>
-                        <option value="防護">個人防護具</option>
-                        <option value="設備">交維與設備</option>
-                        <option value="環境">環境用藥</option>
-                    </select>
-                    <select id="filter-inbound-terminal" onchange="renderInbound()" class="block w-1/2 p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
-                        <option value="ALL">所有航廈</option>
-                        <option value="T1">第一航廈</option>
-                        <option value="T2">第二航廈</option>
-                    </select>
+                    <select id="filter-inbound-category" onchange="updateInboundItemOptions(); renderInbound()" class="block w-1/2 p-2 text-sm border border-gray-300 rounded-lg bg-white"><option value="ALL">所有類別</option><option value="清潔">清潔化學品</option><option value="防護">個人防護具</option><option value="設備">交維與設備</option><option value="環境">環境用藥</option></select>
+                    <select id="filter-inbound-terminal" onchange="renderInbound()" class="block w-1/2 p-2 text-sm border border-gray-300 rounded-lg bg-white"><option value="ALL">所有航廈</option><option value="T1">第一航廈</option><option value="T2">第二航廈</option></select>
                 </div>
-                <!-- 這裡的選單會跟著上面的類別自動改變 -->
-                <select id="filter-inbound-item" onchange="renderInbound()" class="block w-full p-2 text-sm text-gray-700 border border-gray-300 rounded-lg bg-white focus:ring-[#0f3460] focus:border-[#0f3460] shadow-sm">
-                    <option value="ALL">所有品名</option>
-                </select>
+                <select id="filter-inbound-item" onchange="renderInbound()" class="block w-full p-2 text-sm border border-gray-300 rounded-lg bg-white"><option value="ALL">所有品名</option></select>
             </div>
-
-            <div id="inbound-list-container" class="space-y-3">
-                <!-- JS 會將篩選後的資料塞入這裡 -->
-            </div>
+            <div id="inbound-list-container" class="space-y-3"></div>
         </div>
 
-        <!-- ================= 區塊 3：發放紀錄 ================= -->
+        <!-- 區塊 3：發放紀錄 -->
         <div id="view-outbound" class="hidden">
-            <div id="outbound-list-container" class="space-y-3">
-                <div class="text-center text-gray-500 py-10">
-                    <i class="fa-solid fa-person-walking-arrow-right text-4xl mb-3 text-gray-300"></i>
-                    <p>目前沒有發放紀錄</p>
+            <div id="outbound-list-container" class="space-y-3"></div>
+        </div>
+
+        <!-- 🌟 新增區塊 4：盤點紀錄 -->
+        <div id="view-audit" class="hidden">
+            <div class="flex flex-col space-y-2 mb-4">
+                <div class="flex space-x-2">
+                    <select id="filter-audit-category" onchange="updateAuditItemOptions(); renderAudit()" class="block w-1/2 p-2 text-sm border border-gray-300 rounded-lg bg-white"><option value="ALL">所有類別</option><option value="清潔">清潔化學品</option><option value="防護">個人防護具</option><option value="設備">交維與設備</option><option value="環境">環境用藥</option></select>
+                    <select id="filter-audit-terminal" onchange="renderAudit()" class="block w-1/2 p-2 text-sm border border-gray-300 rounded-lg bg-white"><option value="ALL">所有航廈</option><option value="T1">第一航廈</option><option value="T2">第二航廈</option></select>
                 </div>
+                <select id="filter-audit-item" onchange="renderAudit()" class="block w-full p-2 text-sm border border-gray-300 rounded-lg bg-white"><option value="ALL">所有品名</option></select>
             </div>
+            <div id="audit-list-container" class="space-y-3"></div>
         </div>
 
     </main>
 
-    <!-- 前端抓取資料的 Script (一定要有這行 script 標籤) -->
-    <script>
+   <script>
         // 替換成您自己的 API 網址
         const API_URL = "https://script.google.com/macros/s/AKfycbw_g-5UqUCtOVz5SLHO5C9kTFsZdItv891JoX_E2QGJ7K6-yoAFr2S5LExjp2m9b26N/exec";
 
@@ -129,23 +99,25 @@
             fetchInventoryData();
         });
 
+        // 🌟 頁籤切換支援 4 個分頁
         function switchTab(tabName) {
-            const allTabs = ['tab-inventory', 'tab-inbound', 'tab-outbound'];
+            const allTabs = ['tab-inventory', 'tab-inbound', 'tab-outbound', 'tab-audit'];
             allTabs.forEach(id => {
-                document.getElementById(id).className = "flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200";
+                document.getElementById(id).className = "flex-1 text-center py-3 text-gray-500 font-medium cursor-pointer hover:bg-gray-50 transition-colors duration-200 text-sm";
             });
-            document.getElementById(`tab-${tabName}`).className = "flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200";
-            const allViews = ['view-inventory', 'view-inbound', 'view-outbound'];
+            document.getElementById(`tab-${tabName}`).className = "flex-1 text-center py-3 border-b-2 border-[#0f3460] text-[#0f3460] font-bold cursor-pointer transition-colors duration-200 text-sm";
+            
+            const allViews = ['view-inventory', 'view-inbound', 'view-outbound', 'view-audit'];
             allViews.forEach(id => { document.getElementById(id).style.display = 'none'; });
             document.getElementById(`view-${tabName}`).style.display = 'block';
         }
 
         async function fetchInventoryData() {
             try {
-                const invContainer = document.getElementById('inventory-list');
-                const inContainer = document.getElementById('inbound-list-container');
-                if(invContainer) invContainer.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
-                if(inContainer) inContainer.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
+                ['inventory-list', 'inbound-list-container', 'audit-list-container'].forEach(id => {
+                    let el = document.getElementById(id);
+                    if(el) el.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
+                });
 
                 const response = await fetch(API_URL);
                 const result = await response.json();
@@ -162,8 +134,13 @@
                     
                     renderDashboard(globalFilteredInvData);
                     renderItems();
+                    
                     updateInboundItemOptions();
                     renderInbound();
+                    
+                    updateAuditItemOptions();
+                    renderAudit();
+
                     renderOutbound();
                 } else {
                     alert("資料讀取失敗，請檢查系統設定。");
@@ -173,14 +150,12 @@
             }
         }
 
-        // 🌟 升級版：判斷庫存時，加入 remark 備註欄位的盤點辨識
         function calculateInventoryDetails(itemId, termCode, termKw) {
             let inQty = 0; let outQty = 0; let latestAudit = null; 
 
             globalInboundData.forEach(r => {
                 let orderStr = String(r.orderId || "");
                 if(r.itemId === itemId && (orderStr.includes(termCode) || orderStr.includes(termKw))) {
-                    // 只要「供應商」或「備註」任一欄位包含盤點，就視為盤點紀錄
                     if (String(r.supplier || "").includes('盤點') || String(r.remark || "").includes('盤點')) {
                         if (!latestAudit || new Date(r.date.replace(/-/g, '/')) > new Date(latestAudit.date.replace(/-/g, '/'))) {
                             latestAudit = { date: r.date.split('T')[0], qty: Number(r.quantity) || 0 };
@@ -200,9 +175,7 @@
             });
 
             let auditBase = latestAudit ? latestAudit.qty : 0;
-            let currentStock = auditBase + inQty - outQty;
-
-            return { currentStock: currentStock, audit: latestAudit };
+            return { currentStock: auditBase + inQty - outQty, audit: latestAudit };
         }
 
         function renderDashboard(data) {
@@ -226,13 +199,10 @@
             const searchTerm = (document.getElementById('search-inventory').value || "").trim().toLowerCase();
 
             globalFilteredInvData.forEach(item => {
-                if(searchTerm && !item.name.toLowerCase().includes(searchTerm) && !item.id.toLowerCase().includes(searchTerm)) {
-                    return; 
-                }
+                if(searchTerm && !item.name.toLowerCase().includes(searchTerm) && !item.id.toLowerCase().includes(searchTerm)) return; 
 
                 let t1Details = calculateInventoryDetails(item.id, 'T1', '一');
                 let t2Details = calculateInventoryDetails(item.id, 'T2', '二');
-                
                 let totalCurrentStock = t1Details.currentStock + t2Details.currentStock;
                 let safe = Number(item.safeStock) || 0;
 
@@ -240,35 +210,18 @@
                 if (totalCurrentStock <= 0) { statusColor = "red"; statusIcon = "fa-xmark"; statusText = "庫存為零"; } 
                 else if (totalCurrentStock <= safe) { statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於水位"; }
 
-                let t1AuditHtml = t1Details.audit 
-                    ? `<div class="text-[9px] text-indigo-400 mt-1" title="盤點日期: ${t1Details.audit.date}">盤點數: ${t1Details.audit.qty}</div>` 
-                    : `<div class="text-[9px] text-gray-400 mt-1">無盤點紀錄</div>`;
-                    
-                let t2AuditHtml = t2Details.audit 
-                    ? `<div class="text-[9px] text-teal-400 mt-1" title="盤點日期: ${t2Details.audit.date}">盤點數: ${t2Details.audit.qty}</div>` 
-                    : `<div class="text-[9px] text-gray-400 mt-1">無盤點紀錄</div>`;
+                let t1AuditHtml = t1Details.audit ? `<div class="text-[9px] text-indigo-400 mt-1">盤點數: ${t1Details.audit.qty}</div>` : `<div class="text-[9px] text-gray-400 mt-1">無盤點紀錄</div>`;
+                let t2AuditHtml = t2Details.audit ? `<div class="text-[9px] text-teal-400 mt-1">盤點數: ${t2Details.audit.qty}</div>` : `<div class="text-[9px] text-gray-400 mt-1">無盤點紀錄</div>`;
 
                 const cardHTML = `
                 <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-${statusColor}-400 relative">
                     <span class="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded mb-2 font-medium">${item.category}</span>
                     <h2 class="text-base font-bold text-gray-800 mb-2">${item.name} <span class="text-sm font-normal text-gray-500">(${item.unit})</span></h2>
                     <div class="text-sm text-gray-600 mb-3"><i class="fa-solid fa-id-card text-purple-500 w-5"></i> 編號：${item.id}</div>
-                    
                     <div class="flex space-x-2 mb-3">
-                        <div class="flex-1 bg-indigo-50 rounded p-2 text-center border border-indigo-100 flex flex-col justify-between">
-                            <div class="text-[10px] text-indigo-800 font-bold mb-1">第一航廈</div>
-                            <div class="text-sm font-bold text-indigo-600">${t1Details.currentStock}</div>
-                            ${t1AuditHtml}
-                        </div>
-                        <div class="flex-1 bg-teal-50 rounded p-2 text-center border border-teal-100 flex flex-col justify-between">
-                            <div class="text-[10px] text-teal-800 font-bold mb-1">第二航廈</div>
-                            <div class="text-sm font-bold text-teal-600">${t2Details.currentStock}</div>
-                            ${t2AuditHtml}
-                        </div>
-                        <div class="flex-1 bg-gray-50 rounded p-2 text-center border border-gray-200 flex flex-col justify-center">
-                            <div class="text-[10px] text-gray-800 font-bold mb-1">系統總量</div>
-                            <div class="text-sm font-bold text-gray-600">${totalCurrentStock}</div>
-                        </div>
+                        <div class="flex-1 bg-indigo-50 rounded p-2 text-center border border-indigo-100 flex flex-col justify-between"><div class="text-[10px] text-indigo-800 font-bold mb-1">第一航廈</div><div class="text-sm font-bold text-indigo-600">${t1Details.currentStock}</div>${t1AuditHtml}</div>
+                        <div class="flex-1 bg-teal-50 rounded p-2 text-center border border-teal-100 flex flex-col justify-between"><div class="text-[10px] text-teal-800 font-bold mb-1">第二航廈</div><div class="text-sm font-bold text-teal-600">${t2Details.currentStock}</div>${t2AuditHtml}</div>
+                        <div class="flex-1 bg-gray-50 rounded p-2 text-center border border-gray-200 flex flex-col justify-center"><div class="text-[10px] text-gray-800 font-bold mb-1">系統總量</div><div class="text-sm font-bold text-gray-600">${totalCurrentStock}</div></div>
                     </div>
                     <div class="text-sm text-gray-600"><span class="font-medium text-${statusColor}-600">狀態：<i class="fa-solid ${statusIcon}"></i> ${statusText} (安全值: ${safe})</span></div>
                 </div>`;
@@ -276,33 +229,31 @@
             });
         }
 
-        function updateInboundItemOptions() {
-            const catFilter = document.getElementById('filter-inbound-category').value;
-            const itemSelect = document.getElementById('filter-inbound-item');
-            
+        // ==========================================
+        // 輔助工具：過濾器選項產生、單位換算、日期排序
+        // ==========================================
+        function generateItemOptions(selectId, catFilter) {
+            const itemSelect = document.getElementById(selectId);
             itemSelect.innerHTML = '<option value="ALL">所有品名 (請先選擇類別)</option>';
-            
             let itemsToShow = globalItemsData;
             if(catFilter !== 'ALL') {
                 itemsToShow = globalItemsData.filter(item => String(item.category || "").includes(catFilter));
             }
-
             itemsToShow.forEach(item => {
                 let opt = document.createElement('option');
-                opt.value = item.id; 
-                opt.textContent = item.name;
+                opt.value = item.id; opt.textContent = item.name;
                 itemSelect.appendChild(opt);
             });
         }
+        function updateInboundItemOptions() { generateItemOptions('filter-inbound-item', document.getElementById('filter-inbound-category').value); }
+        function updateAuditItemOptions() { generateItemOptions('filter-audit-item', document.getElementById('filter-audit-category').value); }
 
         function parseUnitMultiplier(unitStr) {
             let str = String(unitStr).toLowerCase();
             let baseVol = 1; let displayUnit = "L/月"; 
-
             let volMatch = str.match(/([0-9.]+)\s*(gal|加侖|ml|毫升|kg|公斤|g|公克|l|公升)/);
             if (volMatch) {
-                let val = parseFloat(volMatch[1]);
-                let unit = volMatch[2];
+                let val = parseFloat(volMatch[1]); let unit = volMatch[2];
                 if (unit.includes('gal') || unit.includes('加侖')) { baseVol = val * 3.78541; displayUnit = "L/月"; }
                 else if (unit.includes('ml') || unit.includes('毫升')) { baseVol = val / 1000; displayUnit = "L/月"; }
                 else if (unit.includes('kg') || unit.includes('公斤')) { baseVol = val; displayUnit = "KG/月"; }
@@ -312,14 +263,21 @@
                 let numMatch = str.match(/([0-9.]+)/);
                 if(numMatch) { baseVol = parseFloat(numMatch[1]); displayUnit = "單位/月"; }
             }
-
             let boxMultiplier = 1;
             let boxMatch = str.match(/1箱([0-9]+)/); 
             if (boxMatch) { boxMultiplier = parseFloat(boxMatch[1]); }
             return { multiplier: baseVol * boxMultiplier, unit: displayUnit };
         }
 
-        // 🌟 升級版：進貨紀錄，渲染盤點資料並包含 remark 屬性的過濾
+        const sortDesc = (a, b) => {
+            let dA = String(a.date || "").replace(/\//g, '-');
+            let dB = String(b.date || "").replace(/\//g, '-');
+            return dB.localeCompare(dA);
+        };
+
+        // ==========================================
+        // 🌟 乾淨的「進貨紀錄」(強制排除盤點)
+        // ==========================================
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -328,24 +286,23 @@
             const itemFilter = document.getElementById('filter-inbound-item').value;
 
             let itemCategoryMap = {};
-            globalItemsData.forEach(item => {
-                itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim();
-            });
+            globalItemsData.forEach(item => { itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim(); });
 
             let filteredData = globalInboundData.filter(record => {
+                // 🛑 核心邏輯：如果文字含有「盤點」，直接從進貨中剔除！
+                let isAudit = String(record.supplier || "").includes('盤點') || String(record.orderId || "").includes('盤點') || String(record.remark || "").includes('盤點');
+                if(isAudit) return false;
+
                 let recId = String(record.itemId || "").trim();
                 let recordCat = itemCategoryMap[recId] || '其他';
                 
                 let passCat = (catFilter === 'ALL' || recordCat.includes(catFilter));
                 let passItem = (itemFilter === 'ALL' || recId === itemFilter);
-                
                 let passTerm = true;
                 if(termFilter !== 'ALL') {
                     let orderStr = String(record.orderId || "");
-                    let isT1 = orderStr.includes('T1') || orderStr.includes('一航');
-                    let isT2 = orderStr.includes('T2') || orderStr.includes('二航');
-                    if (termFilter === 'T1' && !isT1) passTerm = false;
-                    if (termFilter === 'T2' && !isT2) passTerm = false;
+                    if (termFilter === 'T1' && !orderStr.includes('T1') && !orderStr.includes('一航')) passTerm = false;
+                    if (termFilter === 'T2' && !orderStr.includes('T2') && !orderStr.includes('二航')) passTerm = false;
                 }
                 return passCat && passTerm && passItem;
             });
@@ -358,12 +315,7 @@
             let groupedData = {};
             filteredData.forEach(record => {
                 let recId = String(record.itemId || "").trim();
-                if (!groupedData[recId]) {
-                    groupedData[recId] = {
-                        itemName: record.itemName, catName: itemCategoryMap[recId] || '其他',
-                        history: []
-                    };
-                }
+                if (!groupedData[recId]) groupedData[recId] = { itemName: record.itemName, catName: itemCategoryMap[recId] || '其他', history: [] };
                 groupedData[recId].history.push(record);
             });
 
@@ -378,100 +330,40 @@
                         monthly[mk] += (Number(r.quantity) || 0);
                     }
                 });
-                
                 let inVals = Object.values(monthly);
                 let rawMaxQty = inVals.length > 0 ? Math.max(...inVals) : 0;
                 let rawAvgQty = inVals.length > 0 ? (inVals.reduce((a,b)=>a+b,0) / inVals.length) : 0;
                 
-                let useAvgVal = rawAvgQty * multiplier;
-                let useMaxVal = rawMaxQty * multiplier;
-                let storeAvgVal = useMaxVal; 
-                let storeMaxVal = storeAvgVal; 
-                if (useAvgVal > 0) { storeMaxVal = storeAvgVal * (useMaxVal / useAvgVal); }
-                return {
-                    useAvg: useAvgVal.toFixed(1), useMax: useMaxVal.toFixed(1),
-                    storeAvg: storeAvgVal.toFixed(1), storeMax: storeMaxVal.toFixed(1)
-                };
+                let useAvgVal = rawAvgQty * multiplier; let useMaxVal = rawMaxQty * multiplier;
+                let storeMaxVal = useMaxVal; 
+                if (useAvgVal > 0) storeMaxVal = useMaxVal * (useMaxVal / useAvgVal); 
+                return { useAvg: useAvgVal.toFixed(1), useMax: useMaxVal.toFixed(1), storeAvg: useMaxVal.toFixed(1), storeMax: storeMaxVal.toFixed(1) };
             }
-
-            const sortDesc = (a, b) => {
-                let dA = String(a.date || "").replace(/\//g, '-');
-                let dB = String(b.date || "").replace(/\//g, '-');
-                return dB.localeCompare(dA);
-            };
 
             let html = '';
             for (const [recId, group] of Object.entries(groupedData)) {
+                let totalInQty = group.history.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
                 
-                let audits = [];
-                let regularInbounds = [];
-
-                group.history.forEach(r => {
-                    // 🌟 這裡也加入了 remark 的判斷
-                    let isAudit = String(r.supplier || "").includes('盤點') || String(r.orderId || "").includes('盤點') || String(r.remark || "").includes('盤點');
-                    if (isAudit) { audits.push(r); } else { regularInbounds.push(r); }
-                });
-
-                let totalInQty = regularInbounds.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
-                
-                audits.sort(sortDesc);
-                let auditHtml = '';
-                if (audits.length > 0) {
-                    auditHtml += `
-                    <div class="mt-2 rounded border border-slate-200 overflow-hidden shadow-sm">
-                        <div class="bg-slate-100 px-2 py-1 flex justify-between items-center border-b border-slate-200 text-[11px] font-bold text-slate-700">
-                            <span><i class="fa-solid fa-clipboard-check mr-1"></i> 盤點紀錄</span>
-                        </div>
-                        <div class="p-2 space-y-1">`;
-                    audits.forEach(r => {
-                        let cleanDate = String(r.date || "").split('T')[0];
-                        let orderStr = String(r.orderId || "");
-                        let termBadge = '';
-                        if(orderStr.includes('T1') || orderStr.includes('一航')) { termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>'; } 
-                        else if(orderStr.includes('T2') || orderStr.includes('二航')) { termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>'; }
-                        
-                        // 顯示備註內容 (如果有備註就顯示備註，否則顯示供應商)
-                        let displayInfo = r.remark ? r.remark : r.supplier;
-                        
-                        auditHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600 flex items-center">${termBadge}${cleanDate}</div><div class="text-slate-700 font-bold">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-20 text-right truncate">${displayInfo}</span></div></div>`;
-                    });
-                    auditHtml += `</div></div>`;
-                }
-
                 let t1Records = []; let t2Records = [];
-                regularInbounds.forEach(r => {
+                group.history.forEach(r => {
                     let orderStr = String(r.orderId || "");
-                    if(orderStr.includes('T1') || orderStr.includes('一航')) { t1Records.push(r); } 
-                    else if(orderStr.includes('T2') || orderStr.includes('二航')) { t2Records.push(r); } 
-                    else { t1Records.push(r); }
+                    if(orderStr.includes('T1') || orderStr.includes('一航')) t1Records.push(r); 
+                    else if(orderStr.includes('T2') || orderStr.includes('二航')) t2Records.push(r); 
+                    else t1Records.push(r);
                 });
 
                 let analyzeHtml = '';
                 if (group.catName.includes('清潔')) {
                     let itemInfo = globalItemsData.find(i => i.id === recId);
-                    let unitStr = itemInfo ? itemInfo.unit : "";
-                    let unitData = parseUnitMultiplier(unitStr);
-                    
+                    let unitData = parseUnitMultiplier(itemInfo ? itemInfo.unit : "");
                     let t1Stats = calcStats(t1Records, unitData.multiplier);
                     let t2Stats = calcStats(t2Records, unitData.multiplier);
 
                     analyzeHtml = `
                     <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100 space-y-2">
                         <div class="text-[11px] font-bold text-indigo-800"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: ${unitData.unit})</div>
-                        <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-indigo-400">
-                            <div class="text-[10px] text-indigo-800 font-bold mb-1">一航</div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="text-center border-r border-gray-100"><div class="text-[9px] text-gray-500 mb-1">使用</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t1Stats.useAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.useMax}</div></div></div></div>
-                                <div class="text-center"><div class="text-[9px] text-gray-500 mb-1">貯存</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t1Stats.storeAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.storeMax}</div></div></div></div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-teal-400">
-                            <div class="text-[10px] text-teal-800 font-bold mb-1">二航</div>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div class="text-center border-r border-gray-100"><div class="text-[9px] text-gray-500 mb-1">使用</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t2Stats.useAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.useMax}</div></div></div></div>
-                                <div class="text-center"><div class="text-[9px] text-gray-500 mb-1">貯存</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t2Stats.storeAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.storeMax}</div></div></div></div>
-                            </div>
-                        </div>
+                        <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-indigo-400"><div class="text-[10px] text-indigo-800 font-bold mb-1">一航</div><div class="grid grid-cols-2 gap-2"><div class="text-center border-r border-gray-100"><div class="text-[9px] text-gray-500 mb-1">使用</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t1Stats.useAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.useMax}</div></div></div></div><div class="text-center"><div class="text-[9px] text-gray-500 mb-1">貯存</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t1Stats.storeAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.storeMax}</div></div></div></div></div></div>
+                        <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-teal-400"><div class="text-[10px] text-teal-800 font-bold mb-1">二航</div><div class="grid grid-cols-2 gap-2"><div class="text-center border-r border-gray-100"><div class="text-[9px] text-gray-500 mb-1">使用</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t2Stats.useAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.useMax}</div></div></div></div><div class="text-center"><div class="text-[9px] text-gray-500 mb-1">貯存</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t2Stats.storeAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.storeMax}</div></div></div></div></div></div>
                     </div>`;
                 }
                 
@@ -480,12 +372,7 @@
                 let historyHtml = '';
                 if(t1Records.length > 0) {
                     let subQty = t1Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
-                    historyHtml += `
-                    <div class="mt-3 rounded border border-indigo-100 overflow-hidden">
-                        <div class="bg-indigo-50 px-2 py-1 flex justify-between items-center border-b border-indigo-100 text-[11px] font-bold text-indigo-800">
-                            <span>一航進貨明細</span><span>小計: ${subQty}</span>
-                        </div>
-                        <div class="p-2 space-y-1">`;
+                    historyHtml += `<div class="mt-3 rounded border border-indigo-100 overflow-hidden"><div class="bg-indigo-50 px-2 py-1 flex justify-between items-center border-b border-indigo-100 text-[11px] font-bold text-indigo-800"><span>一航進貨明細</span><span>小計: ${subQty}</span></div><div class="p-2 space-y-1">`;
                     t1Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
                         historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
@@ -495,12 +382,7 @@
 
                 if(t2Records.length > 0) {
                     let subQty = t2Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
-                    historyHtml += `
-                    <div class="mt-2 rounded border border-teal-100 overflow-hidden">
-                        <div class="bg-teal-50 px-2 py-1 flex justify-between items-center border-b border-teal-100 text-[11px] font-bold text-teal-800">
-                            <span>二航進貨明細</span><span>小計: ${subQty}</span>
-                        </div>
-                        <div class="p-2 space-y-1">`;
+                    historyHtml += `<div class="mt-2 rounded border border-teal-100 overflow-hidden"><div class="bg-teal-50 px-2 py-1 flex justify-between items-center border-b border-teal-100 text-[11px] font-bold text-teal-800"><span>二航進貨明細</span><span>小計: ${subQty}</span></div><div class="p-2 space-y-1">`;
                     t2Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
                         historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-blue-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-10 text-right truncate">${r.supplier}</span></div></div>`;
@@ -511,14 +393,92 @@
                 html += `
                 <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500 mb-3">
                     <div class="flex justify-between items-start mb-1">
+                        <div><span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span><div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div></div>
+                        <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">進貨總計: ${totalInQty}</div>
+                    </div>
+                    ${analyzeHtml}
+                    ${historyHtml}
+                </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // ==========================================
+        // 🌟 全新的「盤點紀錄」專屬畫面
+        // ==========================================
+        function renderAudit() {
+            const container = document.getElementById('audit-list-container');
+            if(!container) return;
+            const catFilter = document.getElementById('filter-audit-category').value;
+            const termFilter = document.getElementById('filter-audit-terminal').value;
+            const itemFilter = document.getElementById('filter-audit-item').value;
+
+            let itemCategoryMap = {};
+            globalItemsData.forEach(item => { itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim(); });
+
+            let filteredData = globalInboundData.filter(record => {
+                // 🛑 核心邏輯：這裡只抓取含有「盤點」的紀錄！
+                let isAudit = String(record.supplier || "").includes('盤點') || String(record.orderId || "").includes('盤點') || String(record.remark || "").includes('盤點');
+                if(!isAudit) return false;
+
+                let recId = String(record.itemId || "").trim();
+                let recordCat = itemCategoryMap[recId] || '其他';
+                
+                let passCat = (catFilter === 'ALL' || recordCat.includes(catFilter));
+                let passItem = (itemFilter === 'ALL' || recId === itemFilter);
+                let passTerm = true;
+                if(termFilter !== 'ALL') {
+                    let orderStr = String(record.orderId || "");
+                    if (termFilter === 'T1' && !orderStr.includes('T1') && !orderStr.includes('一航')) passTerm = false;
+                    if (termFilter === 'T2' && !orderStr.includes('T2') && !orderStr.includes('二航')) passTerm = false;
+                }
+                return passCat && passTerm && passItem;
+            });
+
+            if(filteredData.length === 0) {
+                container.innerHTML = `<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-clipboard-check text-4xl mb-3 text-gray-300"></i><p>該條件下目前無盤點紀錄</p></div>`;
+                return;
+            }
+
+            let groupedData = {};
+            filteredData.forEach(record => {
+                let recId = String(record.itemId || "").trim();
+                if (!groupedData[recId]) groupedData[recId] = { itemName: record.itemName, catName: itemCategoryMap[recId] || '其他', history: [] };
+                groupedData[recId].history.push(record);
+            });
+
+            let html = '';
+            for (const [recId, group] of Object.entries(groupedData)) {
+                let audits = group.history;
+                audits.sort(sortDesc);
+
+                let historyHtml = `
+                    <div class="mt-2 rounded border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="bg-slate-100 px-2 py-1 flex justify-between items-center border-b border-slate-200 text-[11px] font-bold text-slate-700">
+                            <span><i class="fa-solid fa-clipboard-list mr-1"></i> 歷次盤點明細</span>
+                        </div>
+                        <div class="p-2 space-y-1">`;
+                
+                audits.forEach(r => {
+                    let cleanDate = String(r.date || "").split('T')[0];
+                    let orderStr = String(r.orderId || "");
+                    let termBadge = '';
+                    if(orderStr.includes('T1') || orderStr.includes('一航')) termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>'; 
+                    else if(orderStr.includes('T2') || orderStr.includes('二航')) termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>';
+                    
+                    let displayInfo = r.remark ? r.remark : r.supplier;
+                    historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600 flex items-center">${termBadge}${cleanDate}</div><div class="text-slate-700 font-bold">盤點數: ${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-20 text-right truncate">${displayInfo}</span></div></div>`;
+                });
+                historyHtml += `</div></div>`;
+
+                html += `
+                <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-slate-500 mb-3">
+                    <div class="flex justify-between items-start mb-1">
                         <div>
                             <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span>
                             <div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div>
                         </div>
-                        <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">進貨總計: ${totalInQty}</div>
                     </div>
-                    ${auditHtml}
-                    ${analyzeHtml}
                     ${historyHtml}
                 </div>`;
             }
@@ -539,25 +499,19 @@
             let groupedData = {};
             globalOutboundData.forEach(record => {
                 let recId = String(record.itemId || "").trim();
-                if (!groupedData[recId]) { groupedData[recId] = { itemName: record.itemName, catName: itemCategoryMap[recId] || '其他', totalQty: 0, history: [] }; }
+                if (!groupedData[recId]) groupedData[recId] = { itemName: record.itemName, catName: itemCategoryMap[recId] || '其他', totalQty: 0, history: [] };
                 groupedData[recId].totalQty += (Number(record.quantity) || 0);
                 groupedData[recId].history.push(record);
             });
-
-            const sortDesc = (a, b) => {
-                let dA = String(a.date || "").replace(/\//g, '-');
-                let dB = String(b.date || "").replace(/\//g, '-');
-                return dB.localeCompare(dA);
-            };
 
             let html = '';
             for (const [recId, group] of Object.entries(groupedData)) {
                 let t1Records = []; let t2Records = [];
                 group.history.forEach(r => {
                     let orderStr = String(r.orderId || "");
-                    if(orderStr.includes('T1') || orderStr.includes('一航')) { t1Records.push(r); } 
-                    else if(orderStr.includes('T2') || orderStr.includes('二航')) { t2Records.push(r); } 
-                    else { t1Records.push(r); }
+                    if(orderStr.includes('T1') || orderStr.includes('一航')) t1Records.push(r); 
+                    else if(orderStr.includes('T2') || orderStr.includes('二航')) t2Records.push(r); 
+                    else t1Records.push(r);
                 });
 
                 t1Records.sort(sortDesc); t2Records.sort(sortDesc);
@@ -565,12 +519,7 @@
                 
                 if(t1Records.length > 0) {
                     let subQty = t1Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
-                    historyHtml += `
-                    <div class="mt-3 rounded border border-indigo-100 overflow-hidden">
-                        <div class="bg-indigo-50 px-2 py-1 flex justify-between items-center border-b border-indigo-100 text-[11px] font-bold text-indigo-800">
-                            <span>一航發放明細</span><span>小計: ${subQty}</span>
-                        </div>
-                        <div class="p-2 space-y-1">`;
+                    historyHtml += `<div class="mt-3 rounded border border-indigo-100 overflow-hidden"><div class="bg-indigo-50 px-2 py-1 flex justify-between items-center border-b border-indigo-100 text-[11px] font-bold text-indigo-800"><span>一航發放明細</span><span>小計: ${subQty}</span></div><div class="p-2 space-y-1">`;
                     t1Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
                         historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-orange-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-12 text-right truncate">${r.recipient}</span></div></div>`;
@@ -580,12 +529,7 @@
 
                 if(t2Records.length > 0) {
                     let subQty = t2Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
-                    historyHtml += `
-                    <div class="mt-2 rounded border border-teal-100 overflow-hidden">
-                        <div class="bg-teal-50 px-2 py-1 flex justify-between items-center border-b border-teal-100 text-[11px] font-bold text-teal-800">
-                            <span>二航發放明細</span><span>小計: ${subQty}</span>
-                        </div>
-                        <div class="p-2 space-y-1">`;
+                    historyHtml += `<div class="mt-2 rounded border border-teal-100 overflow-hidden"><div class="bg-teal-50 px-2 py-1 flex justify-between items-center border-b border-teal-100 text-[11px] font-bold text-teal-800"><span>二航發放明細</span><span>小計: ${subQty}</span></div><div class="p-2 space-y-1">`;
                     t2Records.forEach(r => {
                         let cleanDate = String(r.date || "").split('T')[0];
                         historyHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600">${cleanDate}</div><div class="text-orange-600 font-medium">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-12 text-right truncate">${r.recipient}</span></div></div>`;
@@ -596,10 +540,7 @@
                 html += `
                 <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-orange-500 mb-3">
                     <div class="flex justify-between items-start mb-1">
-                        <div>
-                            <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span>
-                            <div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div>
-                        </div>
+                        <div><span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span><div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div></div>
                         <div class="text-xs font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded border border-orange-100">總計: ${group.totalQty}</div>
                     </div>
                     ${historyHtml}
