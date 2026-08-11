@@ -174,19 +174,49 @@
             }
         }
 
-        function calculateTerminalStock(itemId, termCode, termKw) {
-            let inQty = 0; let outQty = 0;
+        // 🌟 升級版：各航廈庫存精算 (支援盤點基準自動校正)
+        function calculateInventoryDetails(itemId, termCode, termKw) {
+            let inQty = 0; 
+            let outQty = 0;
+            let latestAudit = null; // 存放最新盤點紀錄
+
+            // 1. 掃描進貨紀錄 (尋找盤點與一般進貨)
             globalInboundData.forEach(r => {
-                if(r.itemId === itemId && (String(r.orderId).includes(termCode) || String(r.orderId).includes(termKw))) {
-                    inQty += Number(r.quantity) || 0;
+                let orderStr = String(r.orderId || "");
+                if(r.itemId === itemId && (orderStr.includes(termCode) || orderStr.includes(termKw))) {
+                    // 判斷是否為盤點紀錄 (只要供應商或備註欄有寫到"盤點"兩字)
+                    if (String(r.supplier || "").includes('盤點')) {
+                        // 如果是最新的盤點，記錄下來作為基準
+                        if (!latestAudit || new Date(r.date.replace(/-/g, '/')) > new Date(latestAudit.date.replace(/-/g, '/'))) {
+                            latestAudit = {
+                                date: r.date.split('T')[0],
+                                qty: Number(r.quantity) || 0
+                            };
+                        }
+                    } else {
+                        // 非盤點紀錄，算入一般進貨
+                        inQty += Number(r.quantity) || 0;
+                    }
                 }
             });
+
+            // 2. 掃描發放紀錄
             globalOutboundData.forEach(r => {
-                if(r.itemId === itemId && (String(r.orderId).includes(termCode) || String(r.orderId).includes(termKw) || String(r.location).includes(termKw))) {
+                let orderStr = String(r.orderId || "");
+                let locStr = String(r.location || "");
+                if(r.itemId === itemId && (orderStr.includes(termCode) || orderStr.includes(termKw) || locStr.includes(termKw))) {
                     outQty += Number(r.quantity) || 0;
                 }
             });
-            return inQty - outQty;
+
+            // 3. 計算目前實際庫存 = (盤點基數 OR 0) + 新進貨 - 總發放
+            let auditBase = latestAudit ? latestAudit.qty : 0;
+            let currentStock = auditBase + inQty - outQty;
+
+            return {
+                currentStock: currentStock,
+                audit: latestAudit // 回傳盤點資訊供畫面顯示
+            };
         }
 
         function renderDashboard(data) {
@@ -202,6 +232,7 @@
             document.getElementById('stat-danger').innerText = danger;
         }
 
+        // 🌟 升級版：庫存列表 (加入盤點基準顯示與實際庫存計算)
         function renderItems() {
             const container = document.getElementById('inventory-list');
             if(!container) return;
@@ -214,13 +245,27 @@
                     return; 
                 }
 
-                let current = Number(item.currentStock) || 0; let safe = Number(item.safeStock) || 0;
-                let statusColor = "green"; let statusIcon = "fa-check"; let statusText = "庫存充足";
-                if (current <= 0) { statusColor = "red"; statusIcon = "fa-xmark"; statusText = "庫存為零"; } 
-                else if (current <= safe) { statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於水位"; }
+                // 呼叫新函數，取得一航與二航的詳細庫存物件
+                let t1Details = calculateInventoryDetails(item.id, 'T1', '一');
+                let t2Details = calculateInventoryDetails(item.id, 'T2', '二');
+                
+                // 系統總量 = 兩航廈目前庫存加總
+                let totalCurrentStock = t1Details.currentStock + t2Details.currentStock;
+                let safe = Number(item.safeStock) || 0;
 
-                let t1Stock = calculateTerminalStock(item.id, 'T1', '一');
-                let t2Stock = calculateTerminalStock(item.id, 'T2', '二');
+                let statusColor = "green"; let statusIcon = "fa-check"; let statusText = "庫存充足";
+                if (totalCurrentStock <= 0) { statusColor = "red"; statusIcon = "fa-xmark"; statusText = "庫存為零"; } 
+                else if (totalCurrentStock <= safe) { statusColor = "yellow"; statusIcon = "fa-triangle-exclamation"; statusText = "低於水位"; }
+
+                // 產生一航廈的盤點提示 HTML
+                let t1AuditHtml = t1Details.audit 
+                    ? `<div class="text-[9px] text-indigo-400 mt-1" title="盤點日期: ${t1Details.audit.date}">盤點數: ${t1Details.audit.qty}</div>` 
+                    : `<div class="text-[9px] text-gray-400 mt-1">無盤點紀錄</div>`;
+                    
+                // 產生二航廈的盤點提示 HTML
+                let t2AuditHtml = t2Details.audit 
+                    ? `<div class="text-[9px] text-teal-400 mt-1" title="盤點日期: ${t2Details.audit.date}">盤點數: ${t2Details.audit.qty}</div>` 
+                    : `<div class="text-[9px] text-gray-400 mt-1">無盤點紀錄</div>`;
 
                 const cardHTML = `
                 <div class="bg-white rounded-lg p-4 shadow-sm border-l-4 border-${statusColor}-400 relative">
@@ -229,17 +274,19 @@
                     <div class="text-sm text-gray-600 mb-3"><i class="fa-solid fa-id-card text-purple-500 w-5"></i> 編號：${item.id}</div>
                     
                     <div class="flex space-x-2 mb-3">
-                        <div class="flex-1 bg-indigo-50 rounded p-2 text-center border border-indigo-100">
+                        <div class="flex-1 bg-indigo-50 rounded p-2 text-center border border-indigo-100 flex flex-col justify-between">
                             <div class="text-[10px] text-indigo-800 font-bold mb-1">第一航廈</div>
-                            <div class="text-sm font-bold text-indigo-600">${t1Stock}</div>
+                            <div class="text-sm font-bold text-indigo-600">${t1Details.currentStock}</div>
+                            ${t1AuditHtml}
                         </div>
-                        <div class="flex-1 bg-teal-50 rounded p-2 text-center border border-teal-100">
+                        <div class="flex-1 bg-teal-50 rounded p-2 text-center border border-teal-100 flex flex-col justify-between">
                             <div class="text-[10px] text-teal-800 font-bold mb-1">第二航廈</div>
-                            <div class="text-sm font-bold text-teal-600">${t2Stock}</div>
+                            <div class="text-sm font-bold text-teal-600">${t2Details.currentStock}</div>
+                            ${t2AuditHtml}
                         </div>
-                        <div class="flex-1 bg-gray-50 rounded p-2 text-center border border-gray-200">
+                        <div class="flex-1 bg-gray-50 rounded p-2 text-center border border-gray-200 flex flex-col justify-center">
                             <div class="text-[10px] text-gray-800 font-bold mb-1">系統總量</div>
-                            <div class="text-sm font-bold text-gray-600">${current}</div>
+                            <div class="text-sm font-bold text-gray-600">${totalCurrentStock}</div>
                         </div>
                     </div>
                     <div class="text-sm text-gray-600"><span class="font-medium text-${statusColor}-600">狀態：<i class="fa-solid ${statusIcon}"></i> ${statusText} (安全值: ${safe})</span></div>
