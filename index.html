@@ -352,7 +352,7 @@
             return { multiplier, unit: displayUnit };
         }
 
-        // 🌟 終極版：進貨紀錄 (一二航廈獨立精算 + 無符號淨白版面)
+        // 🌟 終極版：進貨紀錄 (盤點紀錄獨立置頂 + 申報數據校正)
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -394,14 +394,12 @@
                 if (!groupedData[recId]) {
                     groupedData[recId] = {
                         itemName: record.itemName, catName: itemCategoryMap[recId] || '其他',
-                        totalQty: 0, history: []
+                        history: []
                     };
                 }
-                groupedData[recId].totalQty += (Number(record.quantity) || 0);
                 groupedData[recId].history.push(record);
             });
 
-            // 輔助計算函數：將個別航廈的紀錄進行按月加總與換算
             function calcStats(records, multiplier) {
                 let monthly = {};
                 records.forEach(r => {
@@ -420,10 +418,10 @@
                 
                 let useAvgVal = rawAvgQty * multiplier;
                 let useMaxVal = rawMaxQty * multiplier;
-                let storeAvgVal = useMaxVal; // 貯存平均 = 使用最大
+                let storeAvgVal = useMaxVal; 
                 let storeMaxVal = storeAvgVal; 
                 if (useAvgVal > 0) {
-                    storeMaxVal = storeAvgVal * (useMaxVal / useAvgVal); // 等比例推算
+                    storeMaxVal = storeAvgVal * (useMaxVal / useAvgVal); 
                 }
                 return {
                     useAvg: useAvgVal.toFixed(1),
@@ -433,19 +431,65 @@
                 };
             }
 
+            const sortDesc = (a, b) => {
+                let dA = String(a.date || "").replace(/\//g, '-');
+                let dB = String(b.date || "").replace(/\//g, '-');
+                return dB.localeCompare(dA);
+            };
+
             let html = '';
             for (const [recId, group] of Object.entries(groupedData)) {
                 
-                // 1. 先把一航與二航的明細拆開 (後續面板與列表都會用到)
-                let t1Records = []; let t2Records = [];
+                // 🌟 核心改動：將歷史紀錄拆分為「盤點」與「一般進貨」
+                let audits = [];
+                let regularInbounds = [];
+
                 group.history.forEach(r => {
+                    let isAudit = String(r.supplier || "").includes('盤點') || String(r.orderId || "").includes('盤點');
+                    if (isAudit) {
+                        audits.push(r);
+                    } else {
+                        regularInbounds.push(r);
+                    }
+                });
+
+                // 計算「一般進貨」的總量 (不含盤點)
+                let totalInQty = regularInbounds.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
+                
+                // 🌟 處理獨立的盤點紀錄 HTML
+                audits.sort(sortDesc);
+                let auditHtml = '';
+                if (audits.length > 0) {
+                    auditHtml += `
+                    <div class="mt-2 rounded border border-slate-200 overflow-hidden shadow-sm">
+                        <div class="bg-slate-100 px-2 py-1 flex justify-between items-center border-b border-slate-200 text-[11px] font-bold text-slate-700">
+                            <span><i class="fa-solid fa-clipboard-check mr-1"></i> 盤點紀錄</span>
+                        </div>
+                        <div class="p-2 space-y-1">`;
+                    audits.forEach(r => {
+                        let cleanDate = String(r.date || "").split('T')[0];
+                        let orderStr = String(r.orderId || "");
+                        let termBadge = '';
+                        if(orderStr.includes('T1') || orderStr.includes('一航')) {
+                            termBadge = '<span class="inline-block bg-indigo-100 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">一航</span>';
+                        } else if(orderStr.includes('T2') || orderStr.includes('二航')) {
+                            termBadge = '<span class="inline-block bg-teal-100 text-teal-800 text-[10px] px-1.5 py-0.5 rounded font-bold mr-1">二航</span>';
+                        }
+                        auditHtml += `<div class="flex justify-between items-center text-xs py-1 border-b border-gray-100 last:border-0"><div class="text-gray-600 flex items-center">${termBadge}${cleanDate}</div><div class="text-slate-700 font-bold">${r.quantity} <span class="text-gray-400 font-normal ml-1 inline-block w-14 text-right truncate">${r.supplier}</span></div></div>`;
+                    });
+                    auditHtml += `</div></div>`;
+                }
+
+                // 將「一般進貨」拆分一航與二航
+                let t1Records = []; let t2Records = [];
+                regularInbounds.forEach(r => {
                     let orderStr = String(r.orderId || "");
                     if(orderStr.includes('T1') || orderStr.includes('一航')) { t1Records.push(r); } 
                     else if(orderStr.includes('T2') || orderStr.includes('二航')) { t2Records.push(r); } 
                     else { t1Records.push(r); }
                 });
 
-                // 2. 處理申報數據看板
+                // 處理申報數據看板 (只用一般進貨去算，避免盤點污染數據)
                 let analyzeHtml = '';
                 if (group.catName.includes('清潔')) {
                     let itemInfo = globalItemsData.find(i => i.id === recId);
@@ -458,8 +502,6 @@
                     analyzeHtml = `
                     <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100 space-y-2">
                         <div class="text-[11px] font-bold text-indigo-800"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: ${unitData.unit})</div>
-                        
-                        <!-- 一航專屬數據卡 -->
                         <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-indigo-400">
                             <div class="text-[10px] text-indigo-800 font-bold mb-1">一航</div>
                             <div class="grid grid-cols-2 gap-2">
@@ -479,8 +521,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- 二航專屬數據卡 -->
                         <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-teal-400">
                             <div class="text-[10px] text-teal-800 font-bold mb-1">二航</div>
                             <div class="grid grid-cols-2 gap-2">
@@ -500,16 +540,10 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="text-[9px] text-indigo-400 mt-1 text-right">依據規格「${unitStr}」自動換算</div>
                     </div>`;
                 }
                 
-                // 3. 處理下方列表 (日期強制排序)
-                const sortDesc = (a, b) => {
-                    let dA = String(a.date || "").replace(/\//g, '-');
-                    let dB = String(b.date || "").replace(/\//g, '-');
-                    return dB.localeCompare(dA);
-                };
+                // 處理下方列表 (日期強制排序)
                 t1Records.sort(sortDesc); 
                 t2Records.sort(sortDesc);
 
@@ -551,8 +585,9 @@
                             <span class="inline-block bg-gray-100 text-gray-600 text-[10px] px-1.5 py-0.5 rounded font-medium mb-1">${group.catName}</span>
                             <div class="text-sm font-bold text-gray-800 leading-tight">${group.itemName}</div>
                         </div>
-                        <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">總計: ${group.totalQty}</div>
+                        <div class="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-100">進貨總計: ${totalInQty}</div>
                     </div>
+                    ${auditHtml}
                     ${analyzeHtml}
                     ${historyHtml}
                 </div>`;
