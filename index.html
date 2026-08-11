@@ -486,7 +486,7 @@
         }
 
         // ==========================================
-        // 🌟 全新升級：發放紀錄 (領用名單彙整 + 明細摺疊收納)
+        // 🌟 最終升級：發放紀錄 (無日期版，加入班別狀態，並自動判斷作業區域)
         // ==========================================
         function renderOutbound() {
             const container = document.getElementById('outbound-list-container');
@@ -504,47 +504,33 @@
             globalOutboundData.forEach(record => {
                 let recId = String(record.itemId || "").trim();
                 if (!groupedData[recId]) {
-                    groupedData[recId] = { 
-                        itemName: record.itemName, 
-                        catName: itemCategoryMap[recId] || '其他', 
-                        totalQty: 0, 
-                        history: [] 
-                    };
+                    groupedData[recId] = { itemName: record.itemName, catName: itemCategoryMap[recId] || '其他', totalQty: 0, history: [] };
                 }
                 groupedData[recId].totalQty += (Number(record.quantity) || 0);
                 groupedData[recId].history.push(record);
             });
-
-            const sortDesc = (a, b) => {
-                let dA = String(a.date || "").replace(/\//g, '-');
-                let dB = String(b.date || "").replace(/\//g, '-');
-                return dB.localeCompare(dA);
-            };
 
             let html = '';
             for (const [recId, group] of Object.entries(groupedData)) {
                 
                 let t1Records = []; let t2Records = [];
                 group.history.forEach(r => {
-                    let orderStr = String(r.orderId || "");
-                    if(orderStr.includes('T1') || orderStr.includes('一航')) t1Records.push(r); 
-                    else if(orderStr.includes('T2') || orderStr.includes('二航')) t2Records.push(r); 
-                    else t1Records.push(r); 
+                    // 🌟 關鍵修正：發放單號是空的，改用「作業區域(location)」來分航廈
+                    let locStr = String(r.location || ""); 
+                    if(locStr.includes('T1') || locStr.includes('一航')) t1Records.push(r); 
+                    else if(locStr.includes('T2') || locStr.includes('二航')) t2Records.push(r); 
+                    else t2Records.push(r); // 如果沒填，預設歸類二航
                 });
 
-                t1Records.sort(sortDesc); t2Records.sort(sortDesc);
                 let historyHtml = '';
                 
-                // 🌟 一航發放明細處理
+                // --- 一航發放明細處理 ---
                 if(t1Records.length > 0) {
                     let subQty = t1Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
-                    
-                    // 彙整領用名單並去重複 (確保同一個人領多次不會重複顯示)
                     let recipients = [...new Set(t1Records.map(r => String(r.recipient || "").trim()).filter(Boolean))];
                     let recipientListHtml = '';
                     if(recipients.length > 0) {
-                        let displayNames = recipients.join('、');
-                        recipientListHtml = `<div class="text-[11px] text-gray-600 mb-2 leading-relaxed"><span class="font-bold text-indigo-700"><i class="fa-solid fa-users"></i> 領用名單：</span>${displayNames}</div>`;
+                        recipientListHtml = `<div class="text-[11px] text-gray-600 mb-2 leading-relaxed"><span class="font-bold text-indigo-700"><i class="fa-solid fa-users"></i> 領用名單：</span>${recipients.join('、')}</div>`;
                     }
 
                     historyHtml += `
@@ -556,25 +542,24 @@
                             ${recipientListHtml}
                             <details class="text-[11px] group">
                                 <summary class="cursor-pointer text-indigo-400 hover:text-indigo-600 list-none select-none">
-                                    <span class="border-b border-dashed border-indigo-300 pb-0.5">檢視發放日期與明細 <i class="fa-solid fa-chevron-down text-[8px] ml-1 group-open:rotate-180 transition-transform"></i></span>
+                                    <span class="border-b border-dashed border-indigo-300 pb-0.5">檢視詳細領用明細 <i class="fa-solid fa-chevron-down text-[8px] ml-1 group-open:rotate-180 transition-transform"></i></span>
                                 </summary>
                                 <div class="mt-3 space-y-1 bg-gray-50 p-2 rounded">`;
                     t1Records.forEach(r => {
-                        let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `<div class="flex justify-between items-center py-1 border-b border-gray-200 last:border-0"><div class="text-gray-500">${cleanDate}</div><div class="text-orange-600 font-bold">${r.quantity} <span class="text-gray-600 font-normal ml-1 inline-block w-14 text-right truncate">${r.recipient}</span></div></div>`;
+                        // 如果 H 欄 (remark) 有填寫狀態(如：早班/高空)，就會顯示在名字旁邊
+                        let statusTxt = r.remark ? `<span class="text-[9px] text-gray-400 ml-1">(${r.remark})</span>` : '';
+                        historyHtml += `<div class="flex justify-between items-center py-1.5 border-b border-gray-200 last:border-0"><div class="text-gray-600 font-medium"><i class="fa-solid fa-user text-gray-300 mr-1"></i>${r.recipient}${statusTxt}</div><div class="text-orange-600 font-bold">${r.quantity}</div></div>`;
                     });
                     historyHtml += `</div></details></div></div>`;
                 }
 
-                // 🌟 二航發放明細處理
+                // --- 二航發放明細處理 ---
                 if(t2Records.length > 0) {
                     let subQty = t2Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
-                    
                     let recipients = [...new Set(t2Records.map(r => String(r.recipient || "").trim()).filter(Boolean))];
                     let recipientListHtml = '';
                     if(recipients.length > 0) {
-                        let displayNames = recipients.join('、');
-                        recipientListHtml = `<div class="text-[11px] text-gray-600 mb-2 leading-relaxed"><span class="font-bold text-teal-700"><i class="fa-solid fa-users"></i> 領用名單：</span>${displayNames}</div>`;
+                        recipientListHtml = `<div class="text-[11px] text-gray-600 mb-2 leading-relaxed"><span class="font-bold text-teal-700"><i class="fa-solid fa-users"></i> 領用名單：</span>${recipients.join('、')}</div>`;
                     }
 
                     historyHtml += `
@@ -586,12 +571,13 @@
                             ${recipientListHtml}
                             <details class="text-[11px] group">
                                 <summary class="cursor-pointer text-teal-400 hover:text-teal-600 list-none select-none">
-                                    <span class="border-b border-dashed border-teal-300 pb-0.5">檢視發放日期與明細 <i class="fa-solid fa-chevron-down text-[8px] ml-1 group-open:rotate-180 transition-transform"></i></span>
+                                    <span class="border-b border-dashed border-teal-300 pb-0.5">檢視詳細領用明細 <i class="fa-solid fa-chevron-down text-[8px] ml-1 group-open:rotate-180 transition-transform"></i></span>
                                 </summary>
                                 <div class="mt-3 space-y-1 bg-gray-50 p-2 rounded">`;
                     t2Records.forEach(r => {
-                        let cleanDate = String(r.date || "").split('T')[0];
-                        historyHtml += `<div class="flex justify-between items-center py-1 border-b border-gray-200 last:border-0"><div class="text-gray-500">${cleanDate}</div><div class="text-orange-600 font-bold">${r.quantity} <span class="text-gray-600 font-normal ml-1 inline-block w-14 text-right truncate">${r.recipient}</span></div></div>`;
+                        // 如果 H 欄 (remark) 有填寫狀態(如：早班/高空)，就會顯示在名字旁邊
+                        let statusTxt = r.remark ? `<span class="text-[9px] text-gray-400 ml-1">(${r.remark})</span>` : '';
+                        historyHtml += `<div class="flex justify-between items-center py-1.5 border-b border-gray-200 last:border-0"><div class="text-gray-600 font-medium"><i class="fa-solid fa-user text-gray-300 mr-1"></i>${r.recipient}${statusTxt}</div><div class="text-orange-600 font-bold">${r.quantity}</div></div>`;
                     });
                     historyHtml += `</div></details></div></div>`;
                 }
