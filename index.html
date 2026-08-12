@@ -34,7 +34,59 @@
     <!-- 內容區域 -->
     <main class="max-w-md mx-auto mt-4 px-3">
         
-        <div class="bg-gray-200 text-center py-2 rounded-lg text-gray-700 font-medium mb-4 shadow-sm" id="current-date">讀取日期中...</div>
+        <!-- 🌟 升級：日期列與 SDS 快捷查詢按鈕 -->
+        <div class="flex items-center space-x-2 mb-4">
+            <div class="flex-1 bg-gray-200 text-center py-2 rounded-lg text-gray-700 font-medium shadow-sm text-sm" id="current-date">
+                讀取日期中...
+            </div>
+            <button onclick="openSdsModal()" class="bg-[#0f3460] text-white px-3 py-2 rounded-lg text-sm font-bold shadow-sm hover:bg-indigo-900 transition-colors flex items-center whitespace-nowrap">
+                <i class="fa-solid fa-flask-vial mr-1.5 text-yellow-300"></i> SDS 查詢
+            </button>
+        </div>
+
+        <!-- 🌟 SDS 各場區查詢彈窗 (Modal) -->
+        <div id="sds-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl max-w-sm w-full p-4 shadow-xl space-y-3 relative border border-gray-100">
+                <button onclick="closeSdsModal()" class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <div class="text-base font-bold text-[#0f3460] border-b pb-2 flex items-center">
+                    <i class="fa-solid fa-shield-halved text-indigo-600 mr-2"></i> SDS 安全資料表即時查詢
+                </div>
+                <div class="text-xs text-gray-500">請選擇欲查詢危害性化學品的場區庫房：</div>
+                
+                <div class="space-y-1.5 text-xs font-medium max-h-[60vh] overflow-y-auto pr-1">
+                    <a href="https://jeffreyivideo.github.io/sds-query/" target="_blank" class="flex justify-between items-center bg-indigo-50 hover:bg-indigo-100 text-indigo-900 p-2.5 rounded-lg border border-indigo-200 font-bold">
+                        <span>🌐 全區化學品總庫 SDS</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-indigo-500"></i>
+                    </a>
+                    <a href="https://jeffreyivideo.github.io/sds-query/?loc=一航辦公室" target="_blank" class="flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-gray-800 p-2.5 rounded-lg border border-gray-200">
+                        <span>🏢 信實一航辦公室</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-gray-400"></i>
+                    </a>
+                    <a href="https://jeffreyivideo.github.io/sds-query/?loc=一航三出北" target="_blank" class="flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-gray-800 p-2.5 rounded-lg border border-gray-200">
+                        <span>📦 信實一航三出北倉庫</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-gray-400"></i>
+                    </a>
+                    <a href="https://jeffreyivideo.github.io/sds-query/?loc=二航辦公室" target="_blank" class="flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-gray-800 p-2.5 rounded-lg border border-gray-200">
+                        <span>🏢 信實二航辦公室</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-gray-400"></i>
+                    </a>
+                    <a href="https://jeffreyivideo.github.io/sds-query/?loc=二航管制南" target="_blank" class="flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-gray-800 p-2.5 rounded-lg border border-gray-200">
+                        <span>🚩 信實二航管制南</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-gray-400"></i>
+                    </a>
+                    <a href="https://jeffreyivideo.github.io/sds-query/?loc=二航管制北" target="_blank" class="flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-gray-800 p-2.5 rounded-lg border border-gray-200">
+                        <span>🚩 信實二航管制北</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-gray-400"></i>
+                    </a>
+                    <a href="https://jeffreyivideo.github.io/sds-query/?loc=二航管制北廚房" target="_blank" class="flex justify-between items-center bg-gray-50 hover:bg-gray-100 text-gray-800 p-2.5 rounded-lg border border-gray-200">
+                        <span>🍽️ 信實二航管制北廚房</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-gray-400"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
 
         <!-- 區塊 1：庫存總覽 -->
         <div id="view-inventory" class="block">
@@ -67,7 +119,7 @@
             <div id="outbound-list-container" class="space-y-3"></div>
         </div>
 
-        <!-- 🌟 新增區塊 4：盤點紀錄 -->
+        <!-- 區塊 4：盤點紀錄 -->
         <div id="view-audit" class="hidden">
             <div class="flex flex-col space-y-2 mb-4">
                 <div class="flex space-x-2">
@@ -99,7 +151,14 @@
             fetchInventoryData();
         });
 
-        // 🌟 頁籤切換支援 4 個分頁
+        // 🌟 SDS 彈窗控制函數
+        function openSdsModal() {
+            document.getElementById('sds-modal').classList.remove('hidden');
+        }
+        function closeSdsModal() {
+            document.getElementById('sds-modal').classList.add('hidden');
+        }
+
         function switchTab(tabName) {
             const allTabs = ['tab-inventory', 'tab-inbound', 'tab-outbound', 'tab-audit'];
             allTabs.forEach(id => {
@@ -229,9 +288,6 @@
             });
         }
 
-        // ==========================================
-        // 輔助工具：過濾器選項產生、單位換算、日期排序
-        // ==========================================
         function generateItemOptions(selectId, catFilter) {
             const itemSelect = document.getElementById(selectId);
             itemSelect.innerHTML = '<option value="ALL">所有品名 (請先選擇類別)</option>';
@@ -275,9 +331,6 @@
             return dB.localeCompare(dA);
         };
 
-        // ==========================================
-        // 🌟 乾淨的「進貨紀錄」(強制排除盤點)
-        // ==========================================
         function renderInbound() {
             const container = document.getElementById('inbound-list-container');
             if(!container) return;
@@ -289,7 +342,6 @@
             globalItemsData.forEach(item => { itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim(); });
 
             let filteredData = globalInboundData.filter(record => {
-                // 🛑 核心邏輯：如果文字含有「盤點」，直接從進貨中剔除！
                 let isAudit = String(record.supplier || "").includes('盤點') || String(record.orderId || "").includes('盤點') || String(record.remark || "").includes('盤點');
                 if(isAudit) return false;
 
@@ -355,15 +407,23 @@
                 let analyzeHtml = '';
                 if (group.catName.includes('清潔')) {
                     let itemInfo = globalItemsData.find(i => i.id === recId);
-                    let unitData = parseUnitMultiplier(itemInfo ? itemInfo.unit : "");
+                    let unitStr = itemInfo ? itemInfo.unit : "";
+                    let unitData = parseUnitMultiplier(unitStr);
                     let t1Stats = calcStats(t1Records, unitData.multiplier);
                     let t2Stats = calcStats(t2Records, unitData.multiplier);
 
+                    // 🌟 升級：SDS 直達按鈕整合至面板底部
                     analyzeHtml = `
                     <div class="mt-2 bg-indigo-50 rounded-lg p-2 border border-indigo-100 space-y-2">
                         <div class="text-[11px] font-bold text-indigo-800"><i class="fa-solid fa-flask"></i> 化學品申報數據 (單位: ${unitData.unit})</div>
                         <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-indigo-400"><div class="text-[10px] text-indigo-800 font-bold mb-1">一航</div><div class="grid grid-cols-2 gap-2"><div class="text-center border-r border-gray-100"><div class="text-[9px] text-gray-500 mb-1">使用</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t1Stats.useAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.useMax}</div></div></div></div><div class="text-center"><div class="text-[9px] text-gray-500 mb-1">貯存</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t1Stats.storeAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t1Stats.storeMax}</div></div></div></div></div></div>
                         <div class="bg-white rounded p-1.5 shadow-sm border-l-2 border-teal-400"><div class="text-[10px] text-teal-800 font-bold mb-1">二航</div><div class="grid grid-cols-2 gap-2"><div class="text-center border-r border-gray-100"><div class="text-[9px] text-gray-500 mb-1">使用</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-indigo-600">${t2Stats.useAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.useMax}</div></div></div></div><div class="text-center"><div class="text-[9px] text-gray-500 mb-1">貯存</div><div class="flex justify-around"><div><div class="text-[8px] text-gray-400">平均</div><div class="text-xs font-bold text-teal-600">${t2Stats.storeAvg}</div></div><div><div class="text-[8px] text-gray-400">最大</div><div class="text-xs font-bold text-red-500">${t2Stats.storeMax}</div></div></div></div></div></div>
+                        <div class="mt-2 flex justify-between items-center pt-2 border-t border-indigo-100">
+                            <span class="text-[9px] text-indigo-400">依據規格「${unitStr}」自動換算</span>
+                            <a href="https://jeffreyivideo.github.io/sds-query/" target="_blank" class="inline-flex items-center bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm transition-colors">
+                                <i class="fa-solid fa-file-pdf mr-1"></i> 查看 SDS 資料表
+                            </a>
+                        </div>
                     </div>`;
                 }
                 
@@ -403,9 +463,6 @@
             container.innerHTML = html;
         }
 
-        // ==========================================
-        // 🌟 全新的「盤點紀錄」專屬畫面
-        // ==========================================
         function renderAudit() {
             const container = document.getElementById('audit-list-container');
             if(!container) return;
@@ -417,7 +474,6 @@
             globalItemsData.forEach(item => { itemCategoryMap[String(item.id).trim()] = String(item.category || "").trim(); });
 
             let filteredData = globalInboundData.filter(record => {
-                // 🛑 核心邏輯：這裡只抓取含有「盤點」的紀錄！
                 let isAudit = String(record.supplier || "").includes('盤點') || String(record.orderId || "").includes('盤點') || String(record.remark || "").includes('盤點');
                 if(!isAudit) return false;
 
@@ -485,9 +541,6 @@
             container.innerHTML = html;
         }
 
-        // ==========================================
-        // 🌟 最終升級：發放紀錄 (無日期版，加入班別狀態，並自動判斷作業區域)
-        // ==========================================
         function renderOutbound() {
             const container = document.getElementById('outbound-list-container');
             if(!container) return;
@@ -515,16 +568,14 @@
                 
                 let t1Records = []; let t2Records = [];
                 group.history.forEach(r => {
-                    // 🌟 關鍵修正：發放單號是空的，改用「作業區域(location)」來分航廈
                     let locStr = String(r.location || ""); 
                     if(locStr.includes('T1') || locStr.includes('一航')) t1Records.push(r); 
                     else if(locStr.includes('T2') || locStr.includes('二航')) t2Records.push(r); 
-                    else t2Records.push(r); // 如果沒填，預設歸類二航
+                    else t2Records.push(r); 
                 });
 
                 let historyHtml = '';
                 
-                // --- 一航發放明細處理 ---
                 if(t1Records.length > 0) {
                     let subQty = t1Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
                     let recipients = [...new Set(t1Records.map(r => String(r.recipient || "").trim()).filter(Boolean))];
@@ -546,14 +597,12 @@
                                 </summary>
                                 <div class="mt-3 space-y-1 bg-gray-50 p-2 rounded">`;
                     t1Records.forEach(r => {
-                        // 如果 H 欄 (remark) 有填寫狀態(如：早班/高空)，就會顯示在名字旁邊
                         let statusTxt = r.remark ? `<span class="text-[9px] text-gray-400 ml-1">(${r.remark})</span>` : '';
                         historyHtml += `<div class="flex justify-between items-center py-1.5 border-b border-gray-200 last:border-0"><div class="text-gray-600 font-medium"><i class="fa-solid fa-user text-gray-300 mr-1"></i>${r.recipient}${statusTxt}</div><div class="text-orange-600 font-bold">${r.quantity}</div></div>`;
                     });
                     historyHtml += `</div></details></div></div>`;
                 }
 
-                // --- 二航發放明細處理 ---
                 if(t2Records.length > 0) {
                     let subQty = t2Records.reduce((sum, r) => sum + (Number(r.quantity) || 0), 0);
                     let recipients = [...new Set(t2Records.map(r => String(r.recipient || "").trim()).filter(Boolean))];
@@ -575,7 +624,6 @@
                                 </summary>
                                 <div class="mt-3 space-y-1 bg-gray-50 p-2 rounded">`;
                     t2Records.forEach(r => {
-                        // 如果 H 欄 (remark) 有填寫狀態(如：早班/高空)，就會顯示在名字旁邊
                         let statusTxt = r.remark ? `<span class="text-[9px] text-gray-400 ml-1">(${r.remark})</span>` : '';
                         historyHtml += `<div class="flex justify-between items-center py-1.5 border-b border-gray-200 last:border-0"><div class="text-gray-600 font-medium"><i class="fa-solid fa-user text-gray-300 mr-1"></i>${r.recipient}${statusTxt}</div><div class="text-orange-600 font-bold">${r.quantity}</div></div>`;
                     });
