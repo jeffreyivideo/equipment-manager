@@ -1,12 +1,22 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>防護具與物料總後台</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-</head>
+<!-- 🌟 升級版：頂部導覽列 (加入信實純 CSS Logo) -->
+    <header class="bg-[#0f3460] text-white p-3 flex items-center justify-between sticky top-0 z-50 shadow-md">
+        <div class="flex items-center">
+            <!-- 信實 Logo (純 CSS 繪製，免圖檔) -->
+            <div class="bg-white w-9 h-9 rounded flex items-center justify-center mr-3 shadow-sm relative overflow-hidden shrink-0">
+                <div class="w-[85%] h-[60%] border-[2px] border-[#0f3460] rounded-[100%] flex items-center justify-center absolute">
+                    <span class="text-[#0f3460] font-bold italic text-[9px] tracking-tighter" style="font-family: Arial, sans-serif;">sincere</span>
+                </div>
+            </div>
+            <div class="flex flex-col">
+                <div class="flex items-center">
+                    <span class="bg-indigo-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded mr-1.5">系統</span>
+                    <h1 class="text-base font-bold tracking-wider leading-none">防護具與化學品總後台</h1>
+                </div>
+            </div>
+        </div>
+    </header>
 <body class="bg-gray-50 font-sans text-gray-800 pb-10">
 
     <!-- 頂部導覽列 -->
@@ -171,13 +181,32 @@
             document.getElementById(`view-${tabName}`).style.display = 'block';
         }
 
+        // 🌟 升級版：資料獲取函數 (加入高質感載入動畫，安撫 Google 冷啟動的等待時間)
         async function fetchInventoryData() {
             try {
-                ['inventory-list', 'inbound-list-container', 'audit-list-container'].forEach(id => {
+                // 1. 讓四個數據看板顯示讀取中
+                ['stat-total', 'stat-good', 'stat-warning', 'stat-danger'].forEach(id => {
                     let el = document.getElementById(id);
-                    if(el) el.innerHTML = '<div class="text-center text-gray-500 py-10"><i class="fa-solid fa-spinner fa-spin text-2xl"></i></div>';
+                    if(el) el.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-sm text-gray-300"></i>';
                 });
 
+                // 2. 讓下方列表顯示「專業的資料同步動畫」
+                ['inventory-list', 'inbound-list-container', 'audit-list-container', 'outbound-list-container'].forEach(id => {
+                    let el = document.getElementById(id);
+                    if(el) {
+                        el.innerHTML = `
+                        <div class="text-center py-16 px-4">
+                            <div class="relative inline-block mb-4">
+                                <i class="fa-solid fa-cloud text-5xl text-gray-200"></i>
+                                <i class="fa-solid fa-arrow-right-arrow-left fa-fade text-xl text-[#0f3460] absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2"></i>
+                            </div>
+                            <h3 class="text-base font-bold text-[#0f3460] mb-1">雲端資料同步中</h3>
+                            <p class="text-xs text-gray-500 font-medium">首次載入約需 3~5 秒，請稍候...</p>
+                        </div>`;
+                    }
+                });
+
+                // 執行真正的 API 請求
                 const response = await fetch(API_URL);
                 const result = await response.json();
 
@@ -205,7 +234,11 @@
                     alert("資料讀取失敗，請檢查系統設定。");
                 }
             } catch (error) {
-                alert("無法連線至資料庫。");
+                // 錯誤處理的畫面也做得更好看一點
+                ['inventory-list', 'inbound-list-container', 'audit-list-container', 'outbound-list-container'].forEach(id => {
+                    let el = document.getElementById(id);
+                    if(el) el.innerHTML = `<div class="text-center py-10"><i class="fa-solid fa-triangle-exclamation text-4xl text-red-400 mb-3"></i><p class="text-gray-600 font-bold">無法連線至資料庫</p><p class="text-xs text-gray-400 mt-1">請檢查網路連線或重新整理頁面</p></div>`;
+                });
             }
         }
 
